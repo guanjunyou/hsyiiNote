@@ -10,11 +10,11 @@
 
 **2，pay_type里面有多少个类型在ClubNews/update.php就要显示多少个输入框**
 
-![image-20211213093400146](../../AppData/Roaming/Typora/typora-user-images/image-20211213093400146.png)
+![image-20211213093400146](https://s3.bmp.ovh/imgs/2021/12/349bdc52fa522b6a.jpg)
 
-![image-20211213093427149](../../AppData/Roaming/Typora/typora-user-images/image-20211213093427149.png)
+![image-20211213093427149](https://s3.bmp.ovh/imgs/2021/12/8833883fafa8c1ca.jpg)
 
-![image-20211213093459965](../../AppData/Roaming/Typora/typora-user-images/image-20211213093459965.png)
+![image-20211213093459965](https://s3.bmp.ovh/imgs/2021/12/8ae61a277c1a6dde.jpg)
 
 ClubNews/update.php里面
 
@@ -150,9 +150,7 @@ ClubNewsController.php
 
 **要求实现：从ClubNews（课程）页面设置一个按钮实现跳转到Coursedata（日程）页面，并在新页面只显示父页面课程下的日程，并在新页面实现为父课程页面添加新的日程**
 
-![image-20211213093936601](../../AppData/Roaming/Typora/typora-user-images/image-20211213093936601.png)
-
-![image-20211213093956034](../../AppData/Roaming/Typora/typora-user-images/image-20211213093956034.png)
+![image-20211213093936601](https://s3.bmp.ovh/imgs/2021/12/bfde92b4ecb5cbee.jpg)
 
 ClubNews/index.php
 
@@ -237,5 +235,5 @@ Coursedata/update.php
 
 需求实现在一个页面内查看不同类型的数据
 
-![image-20211215145459155](../../AppData/Roaming/Typora/typora-user-images/image-20211215145459155.png)
+![image-20211215145459155](https://s3.bmp.ovh/imgs/2021/12/d8782fe890e146f8.jpg)
 
