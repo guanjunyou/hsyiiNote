@@ -237,3 +237,358 @@ Coursedata/update.php
 
 ![image-20211215145459155](https://s3.bmp.ovh/imgs/2021/12/d8782fe890e146f8.jpg)
 
+Comment/index.php
+
+```php+HTML
+<?php if (!isset($_REQUEST['type'])) {$_REQUEST['type']=0;} ?>
+<div class="box">
+     <div class="box-title c"><h1><i class="fa fa-table"></i>评价查看列表</h1></div><!--box-title end-->
+    <div class="box-content">
+        <div class="box-header">
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+            <a style="display:none;" id="j-delete" class="btn" href="javascript:;" onclick="we.dele(we.checkval('.check-item input:checked'), deleteUrl);"><i class="fa fa-trash-o"></i>刪除</a>
+        </div><!--box-header end-->
+
+<?php if($_SESSION['courseid']){ 
+    //如果$_SESSION['courseid']有值，即用户选择了一个课程那就只显示该课程的
+    //count是计算该分数下有多少条
+    $courseid=$_SESSION['courseid'];
+    $count1=count(Comment::model()->findALL('score=1 and courseid='.$courseid));
+$count1p=count(Comment::model()->findALL('score=1.5 and courseid='.$courseid));
+$count2=count(Comment::model()->findALL('score=2 and courseid='.$courseid));
+$count2p=count(Comment::model()->findALL('score=2.5 and courseid='.$courseid));
+$count3=count(Comment::model()->findALL('score=3 and courseid='.$courseid));
+$count3p=count(Comment::model()->findALL('score=3.5 and courseid='.$courseid));
+$count4=count(Comment::model()->findALL('score=4 and courseid='.$courseid));
+$count4p=count(Comment::model()->findALL('score=4.5 and courseid='.$courseid));
+$count5=count(Comment::model()->findALL('score=5 and courseid='.$courseid));
+}
+else {//如果没有则显示全部
+    $count1=count(Comment::model()->findALL('score=1'));
+$count1p=count(Comment::model()->findALL('score=1.5'));
+$count2=count(Comment::model()->findALL('score=2'));
+$count2p=count(Comment::model()->findALL('score=2.5'));
+$count3=count(Comment::model()->findALL('score=3'));
+$count3p=count(Comment::model()->findALL('score=3.5'));
+$count4=count(Comment::model()->findALL('score=4'));
+$count4p=count(Comment::model()->findALL('score=4.5'));
+$count5=count(Comment::model()->findALL('score=5'));
+} ?>
+
+
+
+
+    <div class="box-search">
+        <form action="<?php echo Yii::app()->request->url;?>" method="get">
+            <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+                            
+            <span>课程名称</span>
+            <input style="width:200px;" class="input-text" id="course_name" type="text" readonly='ture'>
+            <input type="hidden" style="width:200px;" id="course_id" class="input-text" type="text" name="courseid">
+
+                <input id="course_select_btn" class="btn" type="button" value="选择">
+                <button class="btn btn-blue" type="submit">查询</button>
+            </form>
+
+            <div class="box-detail-tab box-detail-tab mt15">
+            <ul class="flexbox">
+                <?php $action=$_REQUEST['type'];?>
+                <li<?php if($action==1){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=1',array('courseid'=>$_SESSION['courseid']));?>">1星<?php echo '('.$count1.')'?></a>
+                </li>
+                <li<?php if($action==1.5){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=1.5',array('courseid'=>$_SESSION['courseid']));?>">1.5星<?php echo '('.$count1p.')'?></a>
+                </li>
+                <li<?php if($action==2){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=2',array('courseid'=>$_SESSION['courseid']));?>">2星<?php echo '('.$count2.')'?></a>
+                </li>
+                <li<?php if($action==2.5){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=2.5',array('courseid'=>$_SESSION['courseid']));?>">2.5星<?php echo '('.$count2p.')'?></a>
+                </li>
+                <li<?php if($action==3){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=3',array('courseid'=>$_SESSION['courseid']));?>">3星<?php echo '('.$count3.')'?></a>
+                </li>
+                <li<?php if($action==3.5){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=3.5',array('courseid'=>$_SESSION['courseid']));?>">3.5星<?php echo '('.$count3p.')'?></a>
+                </li>
+                <li<?php if($action==4){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=4',array('courseid'=>$_SESSION['courseid']));?>">4星<?php echo '('.$count4.')'?></a>
+                </li>
+                <li<?php if($action==4.5){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=4.5',array('courseid'=>$_SESSION['courseid']));?>">4.5星<?php echo '('.$count4p.')'?></a>
+                </li>
+                <li<?php if($action==5){?> class="current"<?php }?>>
+                    <a href="<?php echo $this->createUrl('Comment/index&type=5',array('courseid'=>$_SESSION['courseid']));?>">5星<?php echo '('.$count5.')'?></a>
+                </li>
+            </ul>
+        </div><!--box-detail-tab end-->
+
+               <!--  <td><//?php echo $form->labelEx($model, 'courseid'); ?></td>
+                    <td>
+                     <//?php echo $form->textField($model, 'courseid', array('class' => 'input-text-add','readonly'=>'ture')); ?>
+                        <input id="club_select_btn" class="btn" type="button" value="选择">
+                        <//?php echo $form->error($model, 'courseid', $htmlOptions = array()); ?>
+                    </td> -->
+</div><!--box-search end-->
+
+<div class="box-table">
+    <table class="list">
+<thead>
+
+    <tr>
+        <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+        <th style='text-align: center;'>编号</th>
+        <th style='text-align: center;'>用户id</th>
+        <th style='text-align: center;'>报名课程</th>
+        <th style='text-align: center;'>报名时间</th>
+        <th style='text-align: center;'>评分（点击查看评价）</th>
+        <th style='text-align: center;'>操作</th>
+    </tr>
+</thead>
+        <tbody>
+
+<?php 
+$index = 1;
+foreach($arclist as $v){
+    if($v->status!=2) continue; //如果未评分则不予显示
+?>
+<tr>
+    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+   <td style='text-align: center;'><?php echo $v->userid; ?></td>
+   <td style='text-align: center;'><?php echo ClubNews::model()->find("id=".$v->courseid)->name; ?></td>
+    <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+    <?php if($v->score) {?>
+        <td style='text-align: center;'><a onclick="read_score('<?php echo $v->id;?>')" title="评分查看" href="javascript:;"><?php echo $v->score; ?>星</a></td><?php }else {?>
+            <td style='text-align: center;'>未评分</td><?php }?>
+    <td style='text-align: center;'>
+    <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+    </td>
+</tr>
+<?php $index++; } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages);?></div>
+        
+    </div><!--box-content end-->
+</div><!--box end-->
+
+<script>
+var deleteUrl = '<?php echo $this->createUrl('delete', array('id'=>'ID'));?>';
+$('#course_select_btn').on('click', function(){ read_course(); });
+    
+ function read_course(){
+        $.dialog.data('id', 0);
+        //console.log($.dialog.data('id'));
+        $.dialog.open('<?php echo $this->createUrl("select/course");?>',{
+            id:'course',lock:true,opacity:0.3,width:'500px',height:'60%',
+            title:'选择课程',
+            close: function () {
+                //console.log($.dialog.data('id'));
+            if($.dialog.data('id')>0){
+               $('#course_name').val($.dialog.data('name'));
+               $('#course_id').val($.dialog.data('id'));
+            }
+        }
+    });    
+  }
+
+function read_score(sid){   //如果点击了查看按钮就调用这个函数并穿了一个id
+        $.dialog.data('id', 0);
+        //console.log(sid);
+        var url = '<?php echo $this->createUrl("SignList/score", array('id'=>'ID'));?>'
+        url = url.replace(/ID/, sid); /*替换ID为选中的记录的id*/
+        $.dialog.open(url,{
+            id:'score',lock:true,opacity:0.3,width:'500px',height:'60%',
+            title:'评分明细',
+            close: function () {
+                //console.log($.dialog.data('id'));
+        }
+    });    
+  }
+</script>
+
+
+```
+
+CommentController.php
+
+```php
+    public function actionIndex($courseid = '',$type='') {
+    set_cookie('_currentUrl_', Yii::app()->request->url);
+    //$type=$_REQUEST['type'];
+    $_SESSION['courseid']=$courseid;
+    $modelName = $this->model;
+    $model = $modelName::model();
+    $criteria = new CDbCriteria;
+    $data = array();
+    $criteria->condition=get_where('1=1',$courseid,'courseid',$courseid,'"');
+    $criteria->condition=get_where($criteria->condition,$type,'score',$type,'"');
+    parent::_list($model, $criteria, 'index', $data,20);
+    }
+```
+
+SignList/score.php
+
+```php+HTML
+<div class="box">
+    <div class="box-content">
+        <div>
+            <form action="<?php echo Yii::app()->request->url;?>" method="get">
+                <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+            </form>
+        </div><!--box-search end-->
+        
+
+<div class="box-table">
+    <table class="list">
+    <thead>
+    <tr>
+        <th style='text-align: center;'>评分</th>
+    </tr>
+    </thead>
+    <tbody>
+<?php 
+foreach($arclist as $v){
+?>
+    <tr>
+        <td style='text-align: center;'><?php echo $v->score; ?></td>
+    </tr>
+<?php  } ?>
+        </tbody>
+    </table>
+</div><!--box-table end-->
+
+<div class="box-table">
+    <table class="list">
+        <thead>
+        <tr>
+            <th style='text-align: center;'>评价详情</th>
+        </tr>
+        </thead>
+        <tbody>
+    <?php
+    $index = 1;
+    foreach($arclist as $v){
+    ?>
+        <tr>
+            <td style='text-align: center;'><?php echo $v->comment; ?></td>
+        </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div>
+        <div class="box-page c"><?php $this->page($pages); ?></div>
+    </div><!--box-content end-->
+</div><!--box end-->
+<script>
+$(function(){
+    api = $.dialog.open.api;	// 			art.dialog.open扩展方法
+    if (!api) return;
+
+    // 操作对话框
+    api.button(
+        {
+            name: '确认'
+        }
+    );
+});
+</script>
+```
+
+### 需求四：文件/图片上传
+
+![](https://s3.bmp.ovh/imgs/2021/12/cceda384b0ec7522.jpg)
+
+![](https://s3.bmp.ovh/imgs/2021/12/3567e507f1ad717b.jpg)
+
+需求：1 实现上传图片并可以看其缩略图，如果上传文件则可以看到其对应格式的图标，点击图标可下载图片
+
+​			2 实现如果用户上传了不符合格式的东西可以显示警告图标并禁止用户下载，增加系统的鲁棒性
+
+studentfile/index.php
+
+```php+HTML
+ <td style='text-align: center;'><?php echo BaseLib::model()->show_pic($v->cpath);?></td>
+```
+
+studentfile/update.php
+
+```php+HTML
+                    <tr>
+
+                         <td><?php echo $form->labelEx($model, 'cpath'); ?></td>
+                        <td>
+                            <?php echo $form->hiddenField($model, 'cpath', array('class' => 'input-text fl')); ?>
+                            <div>只能上传 doc docx pdf zip rar 格式文件</div>
+                            <!-- 改缩略图这里要改 -->
+                            <!-- face_game_bigpic -->
+                            <?php /*$basepath=BasePath::model()->getPath();*/
+                            $picprefix='';
+                            //$model->news_pic='t1234.jpg';
+                            //if($basepath){ $picprefix=$basepath; }?>
+                         <div class="upload_img fl" id="upload_pic_studentfile_cpath"> 
+                          <?php if(!empty($model->cpath)) {?>
+                             <a href="<?php  if(substr($model->cpath,-3,3)=='pdf' || substr($model->cpath,-4,4)=='docx' || substr($model->cpath,-3,3)=='doc' || substr($model->cpath,-3,3)=='zip' || substr($model->cpath,-3,3)=='rar')
+                                     echo $model->cpath;
+                              else
+                                     echo   'https://z3.ax1x.com/2021/11/06/IMh0XT.png'; ?>" target="_blank">
+                             <img src="<?php if (substr($model->cpath,-3,3)=='pdf') 
+                                echo '/hsreport/uploads/image/pdf.png';
+                                else if(substr($model->cpath,-4,4)=='docx')
+                                echo '/hsreport/uploads/image/WORD.png';
+                                else if(substr($model->cpath,-3,3)=='doc')
+                                echo '/hsreport/uploads/image/WORD.png';
+                                else if(substr($model->cpath,-3,3)=='zip')
+                                echo '/hsreport/uploads/image/zip.png';
+                                else if(substr($model->cpath,-3,3)=='rar')
+                                echo '/hsreport/uploads/image/rar.png';
+                                else 
+                                echo '/hsreport/uploads/image/fail.png';
+                                ?>", width="50">
+                             </a>
+                             <?php }?>
+                             </div>
+                            <script>we.uploadpic('<?php echo get_class($model);?>_cpath','<?php echo $picprefix;?>','','','',0);</script>
+                            <?php echo $form->error($model, 'cpath', $htmlOptions = array()); ?>
+                        </td>
+                    </tr>
+
+```
+
+models/BaseLib.php
+
+```php+HTML
+function show_pic($flie='',$id=''){
+    $html='';
+    if(strlen($flie)>40){
+        $html=empty($id)?'<div style="text-align:center">':
+            '<div style="float: left; margin-right:10px" id="upload_pic_'.$id.'">';
+        if(substr($flie,-3,3)=='pdf' || substr($flie,-4,4)=='docx' || substr($flie,-3,3)=='doc' 
+           || substr($flie,-3,3)=='zip' || substr($flie,-3,3)=='rar')
+        $html.= '<a href="'.$flie.'" target="_blank" title="点击查看">';
+        else
+           $html.= '<a href="https://z3.ax1x.com/2021/11/06/IMh0XT.png" target="_blank" title="格式错误">';
+         //这里防止用户下载错误格式的文件，增加程序鲁棒性
+
+
+        $html.= substr($flie,-3,3)=='pdf'?
+            '<img src="'.'/hsreport/uploads/image/pdf.png'.'" style="max-height:30px; max-width:20px;">':'';
+         $html.= substr($flie,-4,4)=='docx'?
+            '<img src="'.'/hsreport/uploads/image/WORD.png'.'" style="max-height:30px; max-width:20px;">':'';
+        $html.= substr($flie,-3,3)=='doc'?
+            '<img src="'.'/hsreport/uploads/image/WORD.png'.'" style="max-height:30px; max-width:20px;">':'';
+         $html.= substr($flie,-3,3)=='zip'?
+            '<img src="'.'/hsreport/uploads/image/zip.png'.'" style="max-height:30px; max-width:20px;">':'';
+         $html.= substr($flie,-3,3)=='rar'?
+            '<img src="'.'/hsreport/uploads/image/rar.png'.'" style="max-height:30px; max-width:20px;">':'';
+         $html.= substr($flie,-4,4)!='docx' && substr($flie,-3,3)!='pdf' && substr($flie,-3,3)!='doc' && substr($flie,-3,3)!='zip' && substr($flie,-3,3)!='rar' ?
+            '<img src="'.'/hsreport/uploads/image/fail.png'.'" style="max-height:30px; max-width:20px;text-align:center;">'.'文件格式错误':'';
+        $html.='</a></div>';
+    }
+    return $html;
+}
+
+```
+
