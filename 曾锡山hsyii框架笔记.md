@@ -592,3 +592,228 @@ function show_pic($flie='',$id=''){
 
 ```
 
+### 需求五：一二三级菜单
+
+![](https://s4.ax1x.com/2021/12/22/Tlq6sS.jpg)
+
+menu_main表
+
+![](https://s4.ax1x.com/2021/12/22/TlLuy8.jpg)
+
+menu表
+
+![](https://s4.ax1x.com/2021/12/22/TljKOK.jpg)
+
+### 需求六：同一个文件实现状态不同的页面
+
+![](https://s4.ax1x.com/2021/12/22/TlzrkD.jpg)
+
+![](https://s4.ax1x.com/2021/12/22/T1iN1e.jpg)
+
+实现：
+
+在这个数据库course中加上status 的字段判断应该显示那个页面
+
+status == 1的那个页面对应的url是ClubNews/index&news_type=1
+
+model/ClubNews/update.php
+
+```php+HTML
+</div>
+        <div class="box-detail">
+     <table class="mt15">
+    <?php 
+     if (!isset($_REQUEST['news_type'])) {$_REQUEST['news_type']=1;} 
+     if($_REQUEST['news_type']==2){   ?>
+        <div class="mt15">
+            <table class="table-title"><tr> <td>审核信息</td></tr></table>
+            <table>
+                <tr>
+                    <td width="15%"><?php echo $form->labelEx($model, 'status'); ?></td>
+                    <td width="35%">
+                        <?php echo $form->radioButtonList($model, 'status', [4=>'通过',3=>'驳回'], array('separator'=>'', 'template'=>'<span class="radio">{input} {label}</span> ')); ?>
+                        <?php echo $form->error($model, 'status'); ?>
+                    </td>
+                    <td width="15%"><?php echo $form->labelEx($model, 'reasons_for_failure'); ?></td>
+                    <td width="35%">
+                        <?php echo $form->textArea($model, 'reasons_for_failure', array('class' => 'input-text')); ?>
+                        <?php echo $form->error($model, 'reasons_for_failure', $htmlOptions = array()); ?>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="box-detail-submit">
+          <button onclick="submitType='queren'" class="btn btn-blue" type="submit">确认</button>
+          <button class="btn" type="button" onclick="we.back();">取消</button>
+         </div>
+      <?php }
+      else if ($_REQUEST['news_type']==1 || $_REQUEST['news_type']==3){
+      if($_REQUEST['news_type']==3){ ?>
+        <table class="table-title"><tr> <td>审核状态</td></tr></table>
+            <table>
+                <tr>
+                    <td width="15%"><?php echo $form->labelEx($model, 'status'); ?></td>
+                    <td width="35%">
+                        <?php echo "驳回" ?>
+                    </td>
+                    <td width="15%"><?php echo $form->labelEx($model, 'reasons_for_failure'); ?></td>
+                    <td width="35%">
+                        <?php echo $model->reasons_for_failure; ?>
+                        <?php echo $form->error($model, 'reasons_for_failure', $htmlOptions = array()); ?>
+                    </td>
+                </tr>
+            </table>
+        <?php }?>
+        <div class="box-detail-submit">
+          <button onclick="submitType='baocun'" class="btn btn-blue" type="submit">保存</button>
+          <button onclick="submitType='shenhe'" class="btn btn-blue" type="submit">提交审核</button>
+          <?php if($_REQUEST['news_type']!=1) { ?>
+            /*只有提交了才能撤销提交*/
+          <button onclick="submitType='chexiao'" class="btn btn-blue" type="submit">撤销提交</button>
+          <?php } ?>
+          <button class="btn" type="button" onclick="we.back();">取消</button>
+         </div>
+     <?php }
+     else {?>
+        <div class="box-detail-submit">
+          <button onclick="submitType='queren'" class="btn btn-blue" type="submit">确认</button>
+          <button onclick="submitType='chexiao'" class="btn btn-blue" type="submit">撤销提交</button>
+          <button class="btn" type="button" onclick="we.back();">取消</button>
+         </div>
+     <?php }?>
+ </table>
+        </div>
+    </div>
+</div><!--box-detail-bd end-->
+```
+
+ClubNews/index.php
+
+```php+HTML
+<?php if (!isset($_REQUEST['news_type'])) {$_REQUEST['news_type']=0;} ?>
+<?php
+ $years=base_year::model()->findALL();
+ $terms=base_term::model()->findALL();
+?>
+
+..........
+
+<div class="box-table">
+    <table class="list">
+<thead>
+
+    <tr>
+        <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+        <th style='text-align: center;'>编号</th>
+        <th style='text-align: center;'>研学课程名称</th>
+        <th style='text-align: center;'>类型</th>
+        <th style='text-align: center;'>简要介绍</th>
+        <th style='text-align: center;'>报名开始时间</th>
+        <th style='text-align: center;'>报名结束时间</th>
+        <th style='text-align: center;'>研学课程开始时间</th>
+        <th style='text-align: center;'>研学课程结束时间</th>
+        <th style='text-align: center;'>缩略图</th>
+        <th style='text-align: center;'>状态</th>
+        <th style='text-align: center;'>缴费总额</th>
+        <th style='text-align: center;'>日程设置</th>
+        <th style='text-align: center;'>操作</th>
+    </tr>
+</thead>
+<tbody>
+<?php 
+$index = 1;
+foreach($arclist as $v){ ?>
+<tr>
+    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+    <td style='text-align: center;'><?php echo $v->name; ?></td>
+    <td style='text-align: center;'><?php echo $v->type; ?></td>
+    <td style='text-align: center;'><?php echo $v->introduce; ?></td>
+    <td style='text-align: center;'><?php echo $v->sign_date_start; ?></td>
+    <td style='text-align: center;'><?php echo $v->sign_date_end; ?></td>
+    <td style='text-align: center;'><?php echo $v->signIn_date_start; ?></td>
+    <td style='text-align: center;'><?php echo $v->signIn_date_end; ?></td>
+    <td style='text-align: center;'><?php echo BaseLib::model()->show_pic($v->imagesurl);?></td>
+    <td style='text-align: center;'><?php switch($v->status){
+                                                                case 1:echo "保存"; break;
+                                                                case 2:echo "提交审核";break;
+                                                                case 3:echo "驳回";break;
+                                                                case 4:echo "审核通过";break;
+                                                                case 11:echo "报名进行中";break;
+                                                                case 12:echo "报名已结束";break;
+                                                                case 21:echo "活动进行中";break;
+                                                                case 22:echo "活动已结束";break;
+                                                                default:
+                                                                    echo "";
+                                                            }
+     ?></td>
+     <td style='text-align: center;'><?php echo $v->cost ?></td>
+    <td style='text-align: center;'>
+        <a class="btn btn-blue" href="<?php echo $this->createUrl('Coursedata/index', array('id'=>$v->id,));?>" title="日程编辑"><i class="fa fa-table "> 日程查看</i></a>
+    </td>
+    <td style='text-align: center;'>
+     
+        <a class="btn" href="<?php echo $this->createUrl('update', array('id'=>$v->id,'news_type'=>Yii::app()->request->getParam('news_type')));?>" title="编辑"><i class="fa fa-edit"></i></a>
+        <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+    </td>
+</tr>
+<?php $index++; } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages);?></div>
+    </div><!--box-content end-->
+</div><!--box end-->
+```
+
+model/ClubNews.php
+
+```php
+        /*status:状态（1保存 2提交 3驳回 4通过   11报名开始 12报名结束  21活动开始 22活动结束）*/
+    protected function afterFind() {
+        parent::afterFind();
+        $this->news_content_temp = $this->content;
+        date_default_timezone_set("PRC");
+        $today=date("Y-m-d H:i:s");
+        if($this->status>=4)  /*当通过审核时*/
+        {
+            if($today<$this->sign_date_start) ;  /* 未开始报名的活动*/
+            else if($today<=$this->sign_date_end) $this->status=11; /*报名中的活动*/
+            else if($today<=$this->signIn_date_start) $this->status=12;/*未开始进行的活动*/
+            else if($today<=$this->signIn_date_end) $this->status=21;/*正在进行的活动*/
+            else $this->status=22; /*已结束的活动*/
+        }
+        
+        $this->save();
+        return true;
+    } 
+
+    protected function beforeSave() {
+        parent::beforeSave();
+        if(isset($_POST['submitType']))
+        {
+           $status=$_POST['submitType'];
+         if($status=='shenhe')
+         {
+            $this->status=2; 
+         }
+         else if($status=='queren')
+         {
+            
+         }
+         else if($status == 'chexiao')
+         {
+             $this->status=1; //撤销的活动
+         }
+         else
+         {
+            $this->status=1;
+         } 
+        }
+         
+        // 圖文描述處理
+        return true;
+    }
+
+```
+
