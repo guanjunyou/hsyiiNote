@@ -1,3 +1,5 @@
+
+
 ## 曾锡山HsYii框架笔记
 
 ### 需求一：在ClubNews页面上取出PayType对应的数据库(pay_type)里的缴费类型进行遍历填写并结合ClubNews的项目类型一起传到ClubPaySet对应的数据库(hash)
@@ -754,6 +756,7 @@ foreach($arclist as $v){ ?>
     <td style='text-align: center;'>
      
         <a class="btn" href="<?php echo $this->createUrl('update', array('id'=>$v->id,'news_type'=>Yii::app()->request->getParam('news_type')));?>" title="编辑"><i class="fa fa-edit"></i></a>
+        /*上面记得把news_type传给update */
         <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
     </td>
 </tr>
@@ -815,5 +818,172 @@ model/ClubNews.php
         return true;
     }
 
+```
+
+ClubNewsController.php
+
+```php
+/*status:状态（1保存 2提交 3驳回 4通过   11报名开始 12报名结束  21活动开始 22活动结束）*/
+    public function actionIndex($styear="",$sterm="",$cstart_date="",$cend_date="",$start_date="",$end_date="",$news_type="") {
+        //这里一定要传入一个news_type
+    set_cookie('_currentUrl_', Yii::app()->request->url);
+    $modelName = $this->model;
+    $model = $modelName::model();
+    $criteria = new CDbCriteria;
+    $w1=get_where('1=1',$styear,'f_year',$styear,'"');
+    $criteria->condition=get_where($w1,$sterm,'f_term',$sterm,'"');
+    $criteria->condition=get_where($criteria->condition,$cstart_date,'starttime>=',$cstart_date,'"');
+    $criteria->condition=get_where($criteria->condition,$cend_date,'starttime<=',$cend_date,'"');
+    $criteria->condition=get_where($criteria->condition,$start_date,'registrationstartdate>=',$start_date,'"');
+    $criteria->condition=get_where($criteria->condition,$end_date,'registrationstartdate<=',$end_date,'"');
+    $criteria->condition=get_where($criteria->condition,$news_type,'status',$news_type,'"'); 
+     //put_msg($criteria->condition);
+    $data = array();
+    parent::_list($model, $criteria, 'index', $data,20);
+    }
+```
+
+### 需求七：导入excel文件并把数据显示出来
+
+![](https://s4.ax1x.com/2021/12/24/TNryjJ.jpg)
+
+![](https://s4.ax1x.com/2021/12/24/TNrWAx.jpg)
+
+![](https://s4.ax1x.com/2021/12/24/TNrqHI.jpg)
+
+Userinfo/import.php
+
+```php
+<div class="box">
+    <div class="box-title c">
+    <h1><i class="fa fa-table"></i>学生信息》导入页面</h1><span class="back">
+    <a class="btn" href="javascript:;" onclick="we.back();">
+    <i class="fa fa-reply"></i>返回</a></span></div><!--box-title end-->
+    <div class="box-detail">
+     <?php  $form = $this->beginWidget('CActiveForm', get_form_list()); ?>
+        <div class="box-detail-bd">
+            <div style="display:block;" class="box-detail-tab-item">
+                <table class="mt15">
+                    <tr>
+                        <td><?php echo "导入模板下载"; ?></td>
+                        <td>
+                            <?php $mobanUrl = '/sanli/uploads/moban.xlsx'?>
+                            <a href="<?php echo $mobanUrl ?>">模板下载</a>
+                        </td>
+                    </tr>
+                     <tr>
+                         <td><?php echo "文件上传"; ?></td>
+                        <td>
+                            <?php echo $form->hiddenField($model, 'excelPath', array('class' => 'input-text fl')); ?>   
+                            <div>只能上传 xlsx xls 格式文件</div>
+                            <!-- 改缩略图这里要改 -->
+                            <!-- face_game_bigpic -->
+                            <?php /*$basepath=BasePath::model()->getPath();*/
+                            $picprefix='';
+                            //$model->news_pic='t1234.jpg';
+                            //if($basepath){ $picprefix=$basepath; }?>
+                         <div class="upload_img fl" id="upload_pic_cstuifo_excelPath"> </div>
+
+                            <script>we.uploadpic('<?php echo get_class($model);?>_excelPath','<?php echo $picprefix;?>','','','',0);</script>
+                            <?php echo $form->error($model, 'excelPath', $htmlOptions = array()); ?>
+                        </td>
+                    </tr>
+
+                </table>
+        </div>
+        <div class="box-detail-submit">
+          <button onclick="submitType='baocun'" class="btn btn-blue" type="submit">导入</button>
+          <button class="btn" type="button" onclick="we.back();">取消</button>
+         </div>
+         
+    
+            <?php $this->endWidget();?>
+  </div><!--box-detail end-->
+</div><!--box end-->
+ 
+   
+```
+
+UserinfoController.php
+
+```php
+     function saveData($model,$post,$is_import=0) {
+        $model->attributes = $post;
+        if($is_import){
+            $path=ROOT_PATH.'/uploads/temp/'. $post['excelPath'];
+            $nameArray=array(
+                'name','gender','education',
+                'nikename','phone','schoolname',
+                'grade','class',
+                 'idnum','parents','p_phone',);
+            //从B列 3行开始导入
+            $Import = new ImportExcel();
+            $status=$Import->import($path,$this->model,$nameArray,'B',3);
+        }
+        show_status($status,'保存成功', get_cookie("_currentUrl_"),'文件类型错误');
+    }
+```
+
+models/Userinfo.php
+
+```php
+  public $excelPath="";
+```
+
+models/importExcel.php
+
+```php+HTML
+<?php
+
+
+class ImportExcel
+{
+
+    function isEndOf($str,$hzArray=array()){
+        foreach ($hzArray as $hz){
+            if ($this->file_hz($str)==$hz)return true; //判断后缀名是不是xlsx 或xls
+        }
+        return false;
+    }
+
+    function file_hz($file){  //求出文件后缀名的函数
+        //put_msg('hzhzhz');
+        //put_msg(substr($file, strrpos($file, '.')+1));
+        return substr($file, strrpos($file, '.')+1);
+    }
+
+    public function import($excelFile = "",$modelName='',$nameArray=array(),$colFirst='B',$rowFirst=3)
+    {
+        if(!$this->isEndOf($excelFile,array('xls','xlsx'))) //拦截文件格式不正确的
+            return false;
+
+        Yii::$enableIncludePath = false;
+        Yii::import('application.extensions.PHPExcel.PHPExcel', 1);
+        $extension=$this->file_hz($excelFile);
+        if ($extension=='xls') {
+            $excelReader = PHPExcel_IOFactory::createReader('Excel5');
+        } else {
+            $excelReader = PHPExcel_IOFactory::createReader('Excel2007');
+        }
+
+        $objPHPExcel = $excelReader->load($excelFile);
+        $sheet = $objPHPExcel->getSheet(0);
+        $highestRow = $sheet->getHighestRow(); // 取得总行数
+        //nameArray是传进来需要导入赋值的变量名数组
+        for ($row = $rowFirst; $row <= $highestRow; $row++){
+            $a = new $modelName();
+            for($i=0 ; $i<count($nameArray);$i++)
+            {
+                //colFirst是起始列数
+                $col = chr(ord($colFirst)+$i);
+                //ord是把字符转换为ASCII chr是转换为字符
+                $a->{$nameArray[$i]}=$sheet->getCell($col.$row)->getValue();
+                //加大括号是把字符串变成变量名
+            }
+            $a->save();
+        }
+        return true;
+    }
+}
 ```
 
