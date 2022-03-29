@@ -2,11 +2,568 @@
 
 ## 曾锡山HsYii框架笔记
 
+**编辑规范：图片均使用图床上的URL  配代码和思路**
+
 [TOC]
 
+### 基本功能：
+
+#### 页面搜索框：
+
+根据时间/地点/学校等关键字搜素字段
+
+ClubNews/index 页面   此页面要结合省市区三级联动
+
+![](https://s1.ax1x.com/2022/03/27/qB5pWj.jpg)
+
+ClubNews/index.php
+
+```php+HTML
+<?php
+ $years=base_year::model()->findALL();
+ $terms=base_term::model()->findALL();
+?>
+<div class="box">
+
+     <?php if(isset($_REQUEST['isFake'])) {; ?>
+        <?php echo show_title($this,"活动详情",1);?>
+    <?php }else{echo show_title($this);}?>
+
+    
+    <div class="box-content">
+        <div class="box-header">
+            <?php if(!isset($_REQUEST['isFake'])) {?><a class="btn" href="<?php echo $this->createUrl('create');?>"><i class="fa fa-plus"></i>添加</a><?php }?>
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+            <a style="display:none;" id="j-delete" class="btn" href="javascript:;" onclick="we.dele(we.checkval('.check-item input:checked'), deleteUrl);"><i class="fa fa-trash-o"></i>刪除</a>
+        </div><!--box-header end-->
+
+     <form action="<?php echo Yii::app()->request->url;?>" method="get">
+    <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+    <input type="hidden" name="approvalStatus" value="<?php echo Yii::app()->request->getParam('approvalStatus');?>">
+    <input type="hidden" name="activeStatus" value="<?php echo Yii::app()->request->getParam('activeStatus');?>">
+    <input type="hidden" name="activeStatus1" value="<?php echo Yii::app()->request->getParam('activeStatus1');?>">
 
 
-### 需求一：在ClubNews页面上取出PayType对应的数据库(pay_type)里的缴费类型进行遍历填写并结合ClubNews的项目类型一起传到ClubPaySet对应的数据库(hash)
+    <label style="margin-right:10px;">
+    <span>活动时间查询：</span>
+    <input style="width:120px;" class="input-text date" placeholder="活动开始日期" type="text" id="start_date" name="cstart_date" value="<?php echo Yii::app()->request->getParam('start_date');?>">
+    <span>-</span>
+    <input style="width:120px;" class="input-text date" placeholder="活动结束日期" type="text" id="end_date" name="cend_date" value="<?php echo Yii::app()->request->getParam('end_date');?>">
+    </label>
+
+    <label style="margin-right:10px;">
+    <span>报名时间查询：</span>
+    <input style="width:120px;" class="input-text date" placeholder="报名开始日期" type="text" id="start_date" name="start_date" value="<?php echo Yii::app()->request->getParam('start_date');?>">
+    <span>-</span>
+    <input style="width:120px;" class="input-text date" placeholder="报名结束日期" type="text" id="end_date" name="end_date" value="<?php echo Yii::app()->request->getParam('end_date');?>">
+    </label>
+    <label style="margin-right:10px;">
+    <span>省：</span>
+    <select name="province" id="province">
+        <option value="">请选择</option>
+        <?php foreach ($province as $v) { ?>
+            <option value="<?php echo $v->id; ?>" <?php if (Yii::app()->request->getParam('province') == $v->id) { ?> selected<?php } ?>><?php echo $v->name; ?></option>
+        <?php } ?>
+    </select>
+    </label>
+    <label style="margin-right:10px;">
+    <span>市：</span>
+    <select name="city" id='city'>
+        <option value="">请选择</option>
+        <?php if(isset($city)) foreach ($city as $v) { ?>
+            <option value="<?php echo $v->id; ?>" <?php if (Yii::app()->request->getParam('city') == $v->id) { ?> selected<?php } ?>><?php echo $v->name; ?></option>
+        <?php } ?>
+    </select>
+    </label>
+    <label style="margin-right:10px;">
+     <span>镇区：</span>
+     <select name="district" id='district'>
+         <option value="">请选择</option>
+         <?php if(isset($district)) foreach ($district as $v) { ?>
+             <option value="<?php echo $v->id; ?>" <?php if (Yii::app()->request->getParam('district') == $v->id) { ?> selected<?php } ?>><?php echo $v->name; ?></option>
+         <?php } ?>
+     </select>
+    </label>
+
+    <div>
+     <label style="margin-right:10px;">
+         <span>根据学校/活动关键字查询：</span>
+         <input style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+     </label>
+        <button class="btn btn-blue" type="submit" array=>查询</button>
+    </div>
+
+
+    </form>
+</div><!--box-search end-->
+
+```
+
+js  script
+
+```js
+
+$("#province").change(function() {
+        $('#city').html("<option value=''>请选择</option>");
+        getLocation("province",'#city');
+        //document.search.submit();
+    });
+$("#city").change(function() {
+    $('#district').html("<option value=''>请选择</option>");
+    getLocation("city",'#district');
+    //document.search.submit();
+});
+
+    function getLocation(sourece,target) {
+        var myselect = document.getElementById(sourece);
+        var index = myselect.selectedIndex;
+        var code = myselect.options[index].value;
+        getData(code,target);
+    }
+
+    function getData(code, element) {
+        $.ajax({
+            url: "<?php echo $this->createUrl('select/getLocation'); ?>",
+            data: {
+                code: code
+            },
+            type: "get",
+            success: function(res) {
+                var data = JSON.parse(res);
+                var str = "<option value=''>请选择</option>";
+                for (var i = 0; i < data.length; i++) {
+                    str += "<option value='" + data[i].id + "'>" + data[i].name + "</option>";
+                }
+                // //把所有<option>放到区的下拉列表里
+                $(element).html(str);
+            }
+        });
+    }
+
+
+
+var $start_date=$('.date');
+var $end_date=$('.date');  //把时间初始化默认为今天
+$start_date.on('click', function(){
+    WdatePicker({startDate:'%y-%M-%D',dateFmt:'yyyy-MM-dd'});
+});
+$end_date.on('click', function(){
+    WdatePicker({startDate:'%y-%M-%D',dateFmt:'yyyy-MM-dd'});
+});
+
+```
+
+ClubNewsController.php  注意形参
+
+```php
+    public function actionIndex($district='',$city="",$styear="",$sterm="",$cstart_date="",$cend_date="",$start_date="",$end_date="",$approvalStatus="",$activeStatus="",$activeStatus1="",$province="",$keywords='') {
+        //put_msg($approvalStatus);
+    set_cookie('_currentUrl_', Yii::app()->request->url);
+    $modelName = $this->model;
+    $model = $modelName::model();
+    $criteria = new CDbCriteria;
+    $w1=get_where('1=1',$styear,'f_year',$styear,'"');
+    $criteria->order = 'id desc';
+    $criteria->condition=get_where($w1,$sterm,'f_term',$sterm,'"');
+    $criteria->condition=get_where($criteria->condition,$cstart_date,'signIn_date_start>=',$cstart_date,'"');
+    $criteria->condition=get_where($criteria->condition,$cend_date,'signIn_date_end<=',$cend_date,'"');
+    $criteria->condition=get_where($criteria->condition,$start_date,'sign_date_start>=',$start_date,'"');
+    $criteria->condition=get_where($criteria->condition,$end_date,'sign_date_end<=',$end_date,'"');
+    if($approvalStatus=='保存') $criteria->condition=get_where_in($criteria->condition,"'保存','提交'",'approvalStatus',"'保存','提交'",'"');
+    else $criteria->condition=get_where($criteria->condition,$approvalStatus,'approvalStatus',$approvalStatus,'"');
+    $criteria->condition=get_where($criteria->condition,$activeStatus,'activeStatus',$activeStatus,'"');
+    $criteria->condition=get_where($criteria->condition,$activeStatus1,'activeStatus!=',$activeStatus1,'"');
+    $criteria->condition=get_like($criteria->condition,'news_club_name,name',$keywords,'');
+    if($_SESSION['F_ROLENAME']!=='后台超级管理员' && $_SESSION['F_ROLENAME']!=='省级教育主管部门' && $_SESSION['F_ROLENAME']!=='市级教育主管部门')
+        $criteria->condition=get_where($criteria->condition,$_SESSION['adminid'],'updateuserid',$_SESSION['adminid'],'"');
+    if($_SESSION['F_ROLENAME']==='省级教育主管部门')
+        $criteria->condition=get_where($criteria->condition,$_SESSION['F_province'],'province',$_SESSION['F_province'],'"');
+    if($_SESSION['F_ROLENAME']==='市级教育主管部门')
+        $criteria->condition=get_where($criteria->condition,$_SESSION['F_city'],'city',$_SESSION['F_city'],'"');
+    if($_SESSION['F_ROLENAME']==='县级教育主管部门')
+        $criteria->condition=get_where($criteria->condition,$_SESSION['F_district'],'district',$_SESSION['F_district'],'"');
+        $data = array();
+    if (is_numeric($province)) {
+        $p=location::model()->find('id='.$province)->name;
+        $criteria->condition=get_where($criteria->condition,$p,'province',$p,'"');
+        $data['city'] = Location::model()->findAll('pid=' . $province);
+    }
+    else{
+        $criteria->condition=get_where($criteria->condition,$province,'province',$province,'"');
+    }
+    if (is_numeric($city)) {
+        $c=location::model()->find('id='.$city)->name;
+        $criteria->condition=get_where($criteria->condition,$c,'city',$c,'"');
+        $data['district'] = Location::model()->findAll('pid=' . $city);
+    }
+    else{
+        $criteria->condition=get_where($criteria->condition,$city,'city',$city,'"');
+    }
+    if (is_numeric($district)) {
+        $d=location::model()->find('id='.$district)->name;
+        $criteria->condition=get_where($criteria->condition,$d,'district',$d,'"');
+    }
+    else{
+        $criteria->condition=get_where($criteria->condition,$district,'district',$district,'"');
+    }
+       
+        $data['province'] = Location::model()->findAll('pid=0');
+        //put_msg($criteria->condition);
+    parent::_list($model, $criteria, 'index', $data,20);
+    }
+```
+
+#### 联动选择框
+
+
+
+![](https://s1.ax1x.com/2022/03/28/qDlPo9.jpg)
+
+ClubNews/update.php
+
+```php+HTML
+                    <?php if($_SESSION['F_ROLENAME']==='后台超级管理员' || $_SESSION['F_ROLENAME']==='市级教育主管部门' || $_SESSION['F_ROLENAME']==='省级教育主管部门' || $_SESSION['F_ROLENAME']==='学校' || $_SESSION['F_ROLENAME']==='县级教育主管部门'){?>
+                    <tr>
+                        <td><?php echo $form->labelEx($model, 'serviceClub');?></td>
+                        <td>
+                            <div id="bindService"><?php echo $form->hiddenField($model, 'serviceClub', array('class' => 'input-text')); ?></div>
+                            <?php echo $form->error($model, 'serviceClub', $htmlOptions = array()); ?>
+                        </td>
+                        <td><?php echo $form->labelEx($model, 'baseClub');?></td>
+                        <td>
+                            <div id="bindBase"><?php echo $form->hiddenField($model, 'baseClub', array('class' => 'input-text')); ?></div>
+                            <?php echo $form->error($model, 'baseClub', $htmlOptions = array()); ?>
+                        </td>
+                    </tr>
+                    <?php } else {?>
+                        <tr>
+                            <td><?php echo $form->labelEx($model, 'serviceClub');?></td>
+                            <td>
+                                <?php echo $_SESSION['TUNIT']?>
+                                <?php echo $form->hiddenField($model,'serviceClub', array('value' => $_SESSION['TUNIT_id'])); ?>
+                                <?php echo $form->error($model, 'serviceClub', $htmlOptions = array()); ?>
+                            </td>
+                            <td><?php echo $form->labelEx($model, 'baseClub');?></td>
+                            <td>
+                                <div id="bindBase"><?php echo $form->hiddenField($model, 'baseClub', array('class' => 'input-text')); ?></div>
+                                <?php echo $form->error($model, 'baseClub', $htmlOptions = array()); ?>
+                            </td>
+                        </tr>
+                    <?php }?>
+```
+
+页面 js
+
+```js
+ //服务商绑定
+    $.ajax({
+        type: 'get',
+        url: '<?php echo $this->createUrl("ClubList/Servicelist");?>',
+        data: {},
+        dataType: "json",
+        success: function (res) {
+            var data = [];
+            console.log(res);
+            for (var i = 0; i < res.data.length; i++) {
+                data.push({name: res.data[i].club_name, value: res.data[i].id});
+            }
+            xmSelect.render({
+                el: '#bindService',
+                theme: {
+                    color: '#368ee0',
+                },
+                initValue: [<?php echo $model->serviceClub?>],
+                autoRow: true,
+                direction: 'up',
+                language: 'zn',
+                filterable: true,
+                radio: true,
+                clickClose: true,
+                <?php if(!empty($_REQUEST['approvalStatus'])&&$_REQUEST['approvalStatus']!=='保存'){?>
+                disabled:true,
+                <?php }?>
+                model: {
+                    label: {
+                        type: 'text',
+                        text: {
+                            //左边拼接的字符
+                            left: '',
+                            //右边拼接的字符
+                            right: '',
+                            //中间的分隔符
+                            separator: ', ',
+                        },
+                    }
+                },
+                data: data,
+                on: function (data) {
+                    var selectArr = data.arr;
+                    var seachArr = [];
+                    for (var j = 0; j < selectArr.length; j++) {
+                        seachArr.push(selectArr[j].value)
+                    }
+                    $("#ClubNews_serviceClub").val(seachArr.toString());
+                    basebind();
+                }
+            })
+        },
+        error: function (err) {
+            console.log(err)
+        }
+    });
+
+    var service=document.getElementById("ClubNews_serviceClub");
+    <?php if($model->serviceClub) {?> basebind();<?php }else{?>
+    if(service!=null) basebind();
+    <?php }?>
+
+    //研学基地绑定
+    function basebind(){
+
+
+        var svalue=service.value;
+        var URL = '<?php echo $this->createUrl("ClubList/Baselist",array('sid'=>'ID'));?>'
+        URL = URL.replace(/ID/, svalue); /*替换ID为选中的记录的id*/
+        $.ajax({
+            type: 'get',
+            url: URL,
+            data: {},
+            dataType: "json",
+            success: function (res) {
+                var data = [];
+                console.log(res);
+                for (var i = 0; i < res.data.length; i++) {
+                    data.push({name: res.data[i].club_name, value: res.data[i].id});
+                }
+                xmSelect.render({
+                    el: '#bindBase',
+                    theme: {
+                        color: '#368ee0',
+                    },
+                    <?php if(!empty($_REQUEST['approvalStatus'])&&$_REQUEST['approvalStatus']!=='保存'){?>
+                    disabled:true,
+                    <?php }?>
+                    initValue: [<?php echo $model->baseClub?>],
+                    autoRow: true,
+                    direction: 'up',
+                    language: 'zn',
+                    filterable: true,
+                    data: data,
+                    on: function (data) {
+                        var selectArr = data.arr;
+                        var seachArr = [];
+                        for (var j = 0; j < selectArr.length; j++) {
+                            seachArr.push(selectArr[j].value)
+                        }
+                        $("#ClubNews_baseClub").val(seachArr.toString());
+                    }
+                })
+            },
+            error: function (err) {
+                console.log(err)
+            }
+        });
+    }
+
+```
+
+ClubListController.php
+
+```php
+    public function actionBaselist($sid='')
+    {
+        $s = 'id,club_name';
+        if(empty($sid)){
+            $rs=array('data'=>'');
+            Basefun::model()->echoEncode($rs);
+        }
+        else{
+            $tmp = ClubList::model()->find("id=".$sid);
+            $bid=$tmp->clubBind;
+            if(empty($bid)){
+                $rs=array('data'=>'');
+                Basefun::model()->echoEncode($rs);
+            }
+            else{
+                $criteria = new CDbCriteria;
+                $criteria->condition=get_where('1=1',"研学基地",'sort',"研学基地",'"');
+                $criteria->condition=get_where_in($criteria->condition,$bid,'id',$bid,'"');
+                $da =ClubList::model()->recToArray($criteria,$s);
+                $rs=array('data'=>$da);
+                Basefun::model()->echoEncode($rs);
+            }
+        }
+    }
+
+    public function actionServicelist()
+    {
+        $s = 'id,club_name';
+        $criteria = new CDbCriteria;
+        $criteria->condition=get_where('1=1',"服务机构",'sort',"服务机构",'"');
+        $da =ClubList::model()->recToArray($criteria,$s);
+        $rs=array('data'=>$da);
+        Basefun::model()->echoEncode($rs);
+    }
+
+```
+
+#### 下拉框：
+
+![](https://s1.ax1x.com/2022/03/28/qD1IEQ.jpg)
+
+ClubNews/update.php
+
+select 第一个 typeid 是本页面表里面字段 , 第二个的id 是 ActivityType 里面的课程类型id  type 是ActivityType里面的课程类型名称
+
+```php+HTML
+                           <?php $cds=ActivityType::model()->findAll();
+                                echo Select2::activeDropDownList($model, 'typeid', Chtml::listData($cds, 'id', 'type'), array('prompt'=>'请选择','style'=>'width:95%;')); ?>
+                                <?php echo $form->error($model, 'typeid', $htmlOptions = array());?>
+                         </td>
+```
+
+#### 弹出选框
+
+
+
+![](https://s1.ax1x.com/2022/03/28/qD3N5j.jpg)
+
+InfoDiffusion/update.php
+
+```php+HTML
+                    <?php if($_SESSION['F_ROLENAME']=="后台超级管理员" ||$_SESSION['F_ROLENAME']=="市级教育主管部门" ||$_SESSION['F_ROLENAME']=="省级教育主管部门"){?>
+
+                        <!--下面是选择机构-->
+                        <td style="padding:10px;"><?php echo $form->labelEx($model, 'club_id'); ?></td>
+                        <td >
+                            <?php echo $form->hiddenField($model, 'club_id', array('class' => 'input-text')); ?>
+                            <span id="club_box"><?php if($model->news_club_name!=null){?><span class="label-box"><?php echo $model->news_club_name;?></span><?php }?></span>
+                            <?php if(!isset($_REQUEST['approvalStatus'])|| $_REQUEST['approvalStatus']==="保存" ){ ?>
+                            <input id="club_select_btn" class="btn" type="button" value="选择">
+                            <?php }?>
+                            <?php echo $form->error($model, 'club_id', $htmlOptions = array()); ?>
+                        </td>
+
+                    <?php } else {?>
+                        <!--下面是选择机构-->
+                        <td style="padding:10px;"><?php echo $form->labelEx($model, 'club_id'); ?></td>
+                        <td >
+                            <?php echo $form->hiddenField($model, 'club_id', array('value'=>$_SESSION['TUNIT_id'],'class' => 'input-text')); ?>
+                            <span id="club_box"><?php if($_SESSION['TUNIT_id']!=null){?><span class="label-box"><?php echo $_SESSION['TUNIT'];?></span><?php }?></span>
+                            <?php echo $form->error($model, 'club_id', $htmlOptions = array()); ?>
+                        </td>
+                        </tr>                       
+                    <?php }?>
+```
+
+js 代码
+
+```js
+    // 選擇單位
+    var $club_box=$('#club_box');
+    var $InfoDiffusion_club_id=$('#infoDiffusion_club_id');
+    $('#club_select_btn').on('click', function(){
+        $.dialog.data('club_id', 0);
+        $.dialog.open('<?php echo $this->createUrl("select/club", array('partnership_type'=>16));?>',{
+            id:'danwei',
+            lock:true,
+            opacity:0.3,
+            title:'选择具体内容',
+            width:'500px',
+            height:'60%',
+            close: function () {
+                //console.log($.dialog.data('club_id'));
+                if($.dialog.data('club_id')>0){
+                    club_id=$.dialog.data('club_id');
+                    $InfoDiffusion_club_id.val($.dialog.data('club_id')).trigger('blur');
+                    $club_box.html('<span class="label-box">'+$.dialog.data('club_title')+'</span>');
+                }
+            }
+        });
+    });
+
+```
+
+select/club.php
+
+```html
+<div class="box">
+    <div class="box-content">
+        <div>
+            <form action="<?php echo Yii::app()->request->url;?>" method="get">
+                <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+                <label style="margin-right:10px;">
+                    <span>关键字：</span>
+                    <input id="club" style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+                </label>
+                <button class="btn btn-blue" type="submit">查询</button>
+            </form>
+        </div><!--box-search end-->
+        <div class="box-table">
+            <table class="list">
+                <thead><tr><th>点击选择</th></tr></thead>
+                <tbody>
+<?php foreach($arclist as $v){ ?>
+    <tr data-id="<?php echo $v->select_id; ?>" data-code="<?php echo $v->select_code; ?>" data-title="<?php echo $v->select_title; ?>">
+        <td><?php echo $v->select_title; ?></td>
+    </tr>
+<?php } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages); ?></div>
+    </div><!--box-content end-->
+</div><!--box end-->
+<script>
+$(function(){
+    api = $.dialog.open.api;	// 			art.dialog.open扩展方法
+    if (!api) return;
+
+    // 操作对话框
+    api.button( { name: '取消' } );
+    $('.box-table tbody tr').on('click', function(){
+    //    var id=$(this).attr('data-id');
+    //    var title=$(this).attr('data-title');
+        $.dialog.data('club_id', $(this).attr('data-id'));
+        $.dialog.data('club_code', $(this).attr('data-code'));
+        $.dialog.data('club_title', $(this).attr('data-title'));
+        $.dialog.close();
+    });
+});
+</script>
+```
+
+selectController.php
+
+```php
+   public function actionClub($keywords = '', $partnership_type = 0, $project_id = 0, $no_cooperation = 0,$club_type = '') {
+       
+        $this->show_club($keywords, $partnership_type, $project_id, $no_cooperation,$club_type,'club');
+    }
+
+    public function actionClubmore($keywords = '', $partnership_type = 0, $project_id = 0, $no_cooperation = 0,$club_type = '') {
+      
+     $this->show_club($keywords, $partnership_type, $project_id, $no_cooperation,$club_type,'clubmore');
+    }
+
+    function show_club($keywords, $partnership_type, $project_id, $no_cooperation,$club_type,$pfile ) {
+        $data = array();
+        $model = ClubList::model();
+        $criteria = new CDbCriteria;
+        //$criteria->condition = 'if_del=510';
+        $criteria->select = 'id select_id,club_name select_title';
+        if ($keywords != '') {
+            $criteria->condition =get_like($criteria->condition,'club_name',$keywords,'');
+        }
+    
+        parent::_list($model, $criteria, $pfile, $data);
+    }
+
+```
+
+
+
+### 一：在ClubNews页面上取出PayType对应的数据库(pay_type)里的缴费类型进行遍历填写并结合ClubNews的项目类型一起传到ClubPaySet对应的数据库(hash)
 
 ![]()
 
@@ -597,6 +1154,18 @@ function show_pic($flie='',$id=''){
 }
 
 ```
+
+models/ClubNews.php
+
+注意：此处若有多个文件/图片上传则用逗号分隔
+
+```php
+    public function picLabels() {
+        return 'imagesurl,costdetail';
+    }
+```
+
+
 
 ### 需求五：一二三级菜单
 
@@ -2657,6 +3226,2874 @@ models/Group.php
          
         // 圖文描述處理
         return true;
+    }
+```
+
+### 需求十五：权限管理功能
+
+### 需求十六：接口编写
+
+微信小程序与php后台的接口
+
+1.后台把数据交给微信小程序
+
+wxOtherController.php
+
+```php
+<?php
+
+class WxOtherController extends IoBaseController
+{
+    public $model;
+    public $s;
+    
+    //导师将要进行的活动
+    //http://localhost/sanli/index.php?r=WxOther/GetTeaAct
+    public function actionGetTeaAct()
+    {
+        $para=getParameter('id');
+        $s1='id,username,coursename,courseid';
+        $s2='imagesurl,signIn_date_start:startTime,signIn_date_end:endTime';
+        $w1="userid='".$para['id']."' and status=3";
+        $data = teaSignList::model()->findAll($w1);
+        $data1=array();
+        $data2=array();
+        $i=0;
+        $today=date("Y-m-d H-i-s");
+
+        foreach ($data as $v)
+        {
+            $courseid = $v->courseid;
+            $tmp = ClubNews::model()->find('id ='.$courseid); //找到对应的活动
+            if($tmp->signIn_date_start > $today)//活动尚未开始
+            {
+                $data1[$i] = $data[$i];
+                $data2[$i] = $tmp;
+                $i++;
+            }
+        }
+        //put_msg($data1);
+        $da1=toIoArray($data1,$s1);//在对象数组中取出$s1需要的变量变成数组传给$da1
+        $da2=toIoArray($data2,$s2);
+        $rs=array('data1'=>$da1,'data2'=>$da2);
+        Basefun::model()->echoEncode($rs);
+    }
+}
+```
+
+在浏览器进行测试后把json信息导入文档中解析
+
+![](https://s4.ax1x.com/2022/01/26/7qijzT.jpg)
+
+### 需求十七：微信支付接口
+
+小程序对接第三方支付是一件比较麻烦的事情，但是在实际项目中还是有很多商家想对接第三方支付，原因有很多：
+
+1. 第一个是因为某些特殊需求，比如这个小程序有多个商家，比如也想在支付宝小程序进行支付等等；
+2. 第二个某些领域是对接第三方支付的费率会比直接使用微信支付费率第一点；
+3. 第三点是第三方支付有些可以打款至法人私户，微信支付好像只能打款至公户？（其实我也不太清楚）
+
+反正因为各种各样的原因，甲方对第三方支付的需求很大，所以小程序对接第三方支付是较为常见的需求，但翻遍全网对第三方支付的对接资料较少，找了半天也没有多少资料可以参考。。。。写下这个来记录一波。
+
+**支付流程**
+
+1. 甲方向第三方支付机构提交进件，第三方机构代为申请微信支付
+
+2. 第三方机构下方帐号和密钥，对应的第三方支付接口
+
+   （第三方支付接口作用：提交下游订单号、支付金额、帐号、签名、商品描述、回调地址等信息后，第三方接口可返回第三方支付订单号、唤起微信支付的pay_info等信息）
+
+3. 后台和小程序进行相应的开发
+
+4. 开发完成后
+
+5. 用户点击支付按钮
+
+6. 小程序发送对应订单信息和商品信息至后台，后台根据签名规则生成对应的签名
+
+7. 将接口需要的信息（包括签名）发送至第三方接口，第三方接口返回信息至后端
+
+8. 后端发送第三方接口返回的信息至小程序
+
+   （上述后端内容也可以在小程序写代码完成）
+
+9. 小程序接收信息后，根据对应信息唤起微信支付
+
+10. 微信支付唤起后，用户付款
+
+11. 第一，小程序微信支付会返回支付是否成功信息
+
+    第二，回调接口会返回支付是否成功信息
+
+12. 前后端进行校验，前端检查微信支付返回的是否成功信息，如果成功，对后端发送SUCCESS，后端可使用回调接口返回信息与前端SUCCESS进行前后端校验，也可以后端为保险起见使用第三方支付给的查询订单接口查询并返回信息进行前后端校验。
+
+13. 校验成功：将订单状态进行更改
+
+    校验失败：返回错误信息，或调试程序。
+
+
+
+支付接口文档 http://tgyapi.yltg.com.cn/project/35/interface/api/41
+
+下图的文档中有需要获取的支付信息
+
+![](https://s4.ax1x.com/2022/02/24/bkMp9A.jpg)
+
+文档要求
+
+![](https://s4.ax1x.com/2022/02/25/bkQ1xI.jpg)
+
+
+
+后端controller
+
+```php
+	//支付接口
+    public function actiontgPay()
+    {
+        $p = new tgPay();
+        $request=getParameter("payMoney,lowOrderId,body,isMinipg");
+        $request['account'] = 'XXXXXXXX'; //第三方下方的账号(接口要求)
+        $request['appId'] 'XXXXXXXXX';	//小程序appId(接口要求)
+        $res = $p->pay($request);
+        $res = json_decode($res);
+        $res -> request = $request;
+        echo json_encode($res);	//第三方接口返回的数据送至小程序
+    }
+
+    //支付回调接口
+    //传送参数是RW格式
+    public function actionAccepttgPay()
+    {
+        $request = file_get_contents("php://input");
+        $request = json_decode($request, true);
+        $p = new tgCallback();
+        $res = $p->call($request);
+        echo $res;
+    }
+
+    //通莞支付查询上游订单接口并作校验 根据第三方接口需求做出调整
+    public function actionorderFind($lowOrderId,$status)
+    {
+        $p = new orderFind();
+        $res = $p->orderQuery($lowOrderId);
+        $res = json_decode($res);
+        $sign_order = SignList::model()->find("id=".$lowOrderId);
+        if($status==="SUCCESS" && $res->state=="0")
+        {
+            if(!empty($sign_order))
+            {
+                $sign_order->status = 3;    //更改状态
+                $sign_order->payid = $res->upOrderId;   //通莞支付id
+                $sign_order->paychannel = "缴费通";    //支付方式
+                $sign_order->payMoney = $res->payMoney; //缴费金 额
+                $sign_order->payState = "支付成功"; //支付状态
+                $sign_order->wxpayid = $res->channelOrderId;    //微信支付id
+                $sign_order->save();
+                $this->JsonSuccess(array('code'=>100,'msg'=>'支付成功'));
+            }
+            else
+                $this->JsonSuccess(array('code'=>101,'msg'=>'数据库订单信息出错'));
+        }
+        else
+        {
+            $sign_order->status = 1; $sign_order->save();
+            if($res->status==101) $this->JsonSuccess(array('code'=>101,'msg'=>$res->message));
+            else{
+                switch($res->state)
+                {
+                    case 1:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'支付失败'));
+                    case 2:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'用户撤销支付'));
+                    case 4:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'待支付'));
+                    case 5:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'已转入退款'));
+                    case 6:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'已转入部分退款'));
+                    default:
+                        $this->JsonSuccess(array('code'=>101,'msg'=>'已转入部分退款'));
+                }
+            }
+
+        }
+    }
+```
+
+models/tgPay.php
+
+```php
+<?php
+date_default_timezone_set('PRC');
+class tgPay{
+
+    public $url = 'https://ipay.833006.net/tgPosp/services/payApi/wxJspay';
+    public $account = '25863396782801';
+    public $privateKey = '456de823efab4485d4be220fdc7fbfb4';
+
+    public function pay($request = array(
+        'payMoney',
+        'lowOrderId',
+        'body',
+        'isMinipg' => "1",
+        'notifyUrl',
+        'returnUrl',
+        'openId',
+        'appId',
+        'attach',
+        'storeid'
+    )){
+        $data = array(
+            'account' => isset($request['account'])?$request['account']:$this->account,
+            'payMoney' => $request['payMoney'], //单位元
+            'lowOrderId' => $request['lowOrderId'], // 下游订单号
+            'body' => $request['body'], // 商品描述
+            'isMinipg' => $request['isMinipg'], // 是否小程序:1-是
+            'notifyUrl' => $request['notifyUrl'],// 回调通知地址
+            //'returnUrl' => $request['returnUrl'], // 交易完成后跳转的URl
+            'openId' => $request['openId'], // 微信用户在公众号的唯一标识
+            'appId' => $request['appId'], // 公众号 AppID
+            //'attach' => $request['attach'], // 附加信息,
+            //'storeid' => $request['storeid'], // 门店号
+        );
+
+        $data['sign'] = $this->getSign($data);//调用签名算法
+        $result = $this->postByCurl($this->url, json_encode($data));
+
+        str_replace('\"', '"', $result);
+        return $result;
+    }
+
+    /**
+     * 接口请求
+     * @param $reqUrl
+     * @param $json
+     * @return mixed
+     */
+    function postByCurl($reqUrl, $json){
+        $SSL = substr($reqUrl, 0, 8) == "https://"?true:false;
+        $ch = curl_init(); // 初始化,创建一个新cURL资源
+
+        if ($SSL) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 信任任何证书
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // 检查证书中是否设置域名
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json;charset=utf-8')
+        );
+        curl_setopt($ch, CURLOPT_URL, $reqUrl); // 要访问的地址
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // 执行结果是否被返回，0是返回，1是不返回
+        $data = curl_exec($ch); // 执行并获取数据(抓取URL并把它传递给浏览器)初始化一个curl并且全部的选项都设置之后再调用。
+//        $info = curl_getinfo($ch);
+        curl_close($ch);  // 关闭cURL资源，并且释放系统资源
+        return $data;
+    }
+
+    /**
+     * 获取签名
+     */
+    public function getSign($condition)
+    {
+        $res = $this->ASCII($condition);//按ASCII码排序
+        $res = $res.'&key='.$this->privateKey;//把密钥拼起来
+        $res = strtoupper(md5($res));//转MD5码 并转字符串
+        return  $res;
+    }
+
+    /**
+     * ASCII排序
+     */
+    function ASCII($params = array()){
+        if(!empty($params)){
+            $p =  ksort($params);
+            if($p){
+                $str = '';
+                foreach ($params as $k=>$val){
+                    if($val != ''){
+                        $str .= $k .'=' . $val . '&';
+                    }
+                }
+                $strs = rtrim($str, '&';
+                return $strs;
+            }
+        }
+        return false;
+    }
+}
+
+
+?>
+
+```
+
+models/tgCallback（回调）
+
+```php
+<?php
+date_default_timezone_set('PRC');
+class tgCallback{
+
+    public $account = 'XXXXXXX'; //第三方下放账号
+    public $privateKey = 'XXXXXXXX';	//第三方下放密钥
+
+    public function call($data = array(
+        "sign",
+        "payMoney",
+        "channelId",
+        "orderDesc",
+        "attach",
+        "state",
+        "upOrderId",
+        "account",
+        "openid",
+        "merchantId",
+        "settlementChannel",
+        "payTime",
+        "payoffType",
+        "lowOrderId",
+    )){
+        // 验证签名
+        $sign = $data['sign'];
+        unset($data['sign']);
+        $check_sign = $this->getSign($data);
+        if($check_sign != $sign){
+            return '验签失败';
+        }
+
+        return 'SUCCESS';	//第三方支付接口有要求返回SUCCESS
+    }
+
+    /**
+     * 获取签名
+     */
+    public function getSign($condition)
+    {
+        $res = $this->ASCII($condition);
+        $res = $res.'&key='.$this->privateKey;
+        $res = strtoupper(md5($res));
+        return  $res;
+    }
+
+    /**
+     * ASCII排序
+     */
+    function ASCII($params = array()){
+        if(!empty($params)){
+            $p =  ksort($params);
+            if($p){
+                $str = '';
+                foreach ($params as $k=>$val){
+                    if($val != ''){
+                        $str .= $k .'=' . $val . '&';
+                    }
+                }
+                $strs = rtrim($str, '&');
+                return $strs;
+            }
+        }
+        return false;
+    }
+}
+
+?>
+
+```
+
+models/reverse.php
+
+```php
+<?php
+date_default_timezone_set('PRC');
+class reverse{
+    
+    public $account = '25863396782801';
+    public $privateKey = '456de823efab4485d4be220fdc7fbfb4';
+
+    public function call($data = array(
+        "sign",
+        "payMoney",
+        "channelId",
+        "orderDesc",
+        "attach",
+        "state",
+        "upOrderId<?php
+date_default_timezone_set('PRC');
+class tgPay{
+
+    public $url = 'XXXXXXXXX'; //第三方支付接口地址
+    public $account = 'XXXXXXXXX';	//第三方支付下发账号
+    public $privateKey = 'XXXXXXXXXXXX';	//第三方支付下发密钥
+
+    public function pay($request = array(
+        'payMoney',
+        'lowOrderId',
+        'body',
+        'isMinipg' => "1",
+        'notifyUrl',
+        'openId',
+        'appId'
+    )){
+        $data = array(
+            'account' => isset($request['account'])?$request['account']:$this->account,
+            'payMoney' => $request['payMoney'], //单位元
+            'lowOrderId' => $request['lowOrderId'], // 下游订单号
+            'body' => $request['body'], // 商品描述
+            'isMinipg' => $request['isMinipg'], // 是否小程序:1-是
+            'notifyUrl' => "http://XXXXXXXXX",// 回调通知地址，最好不要使用https，有可能无法接受回调信息。
+            //'returnUrl' => $request['returnUrl'], // 交易完成后跳转的URl
+            'openId' => $request['openId'], // 微信用户在公众号的唯一标识
+            'appId' => $request['appId'], // 公众号 AppID
+            //'attach' => $request['attach'], // 附加信息,
+            //'storeid' => $request['storeid'], // 门店号
+        );
+        $data['sign'] = $this->getSign($data);	//制作签名
+        $result = $this->postByCurl($this->url, json_encode($data));	//发送请求至第三方接口，返回result
+
+        str_replace('\"', '"', $result);
+        return $result;
+    }
+
+    /**
+     * 接口请求
+     * @param $reqUrl
+     * @param $json
+     * @return mixed
+     */
+    function postByCurl($reqUrl, $json){
+        $SSL = substr($reqUrl, 0, 8) == "https://"?true:false;
+        $ch = curl_init(); // 初始化,创建一个新cURL资源
+
+        if ($SSL) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 信任任何证书
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // 检查证书中是否设置域名
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json;charset=utf-8')
+        );
+        curl_setopt($ch, CURLOPT_URL, $reqUrl); // 要访问的地址
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // 执行结果是否被返回，0是返回，1是不返回
+        $data = curl_exec($ch); // 执行并获取数据(抓取URL并把它传递给浏览器)初始化一个curl并且全部的选项都设置之后再调用。
+//        $info = curl_getinfo($ch);
+        curl_close($ch);  // 关闭cURL资源，并且释放系统资源
+        return $data;
+    }
+
+    /**
+     * 获取签名
+     */
+    public function getSign($condition)
+    {
+        $res = $this->ASCII($condition);
+        $res = $res.'&key='.$this->privateKey;
+        $res = strtoupper(md5($res));
+        return  $res;
+    }
+
+    /**
+     * ASCII排序
+     */
+    function ASCII($params = array()){
+        if(!empty($params)){
+            $p =  ksort($params);
+            if($p){
+                $str = '';
+                foreach ($params as $k=>$val){
+                    if($val != ''){
+                        $str .= $k .'=' . $val . '&';
+                    }
+                }
+                $strs = rtrim($str, '&');
+                return $strs;
+            }
+        }
+        return false;
+    }
+}
+
+
+?>
+        "account",
+        "openid",
+        "merchantId",
+        "settlementChannel",
+        "payTime",
+        "payoffType",
+        "lowOrderId",
+    )){
+        // 验证签名
+        $sign = $data['sign'];
+        unset($data['sign']);
+
+        $check_sign = $this->getSign($data);
+
+        if($check_sign != $sign){
+            return '验签失败';
+        }
+
+        return json_encode($data);
+    }
+
+    /**
+     * 获取签名
+     */
+    public function getSign($condition)
+    {
+        $res = $this->ASCII($condition);
+        $res = $res.'&key='.$this->privateKey;
+        $res = strtoupper(md5($res));
+        return  $res;
+    }
+
+    /**
+     * ASCII排序
+     */
+    function ASCII($params = array()){
+        if(!empty($params)){
+            $p =  ksort($params);
+            if($p){
+                $str = '';
+                foreach ($params as $k=>$val){
+                    if($val != ''){
+                        $str .= $k .'=' . $val . '&';
+                    }
+                }
+                $strs = rtrim($str, '&');
+                return $strs;
+            }
+        }
+        return false;
+    }
+}
+
+?>
+
+
+```
+
+orderFind(订单查找，用于校验，为什么不用回调信息校验，因为我觉得回调给的信息太少)
+
+```php
+<?php
+date_default_timezone_set('PRC');
+class orderFind{
+    
+    public $url = 'https://XXXXXXXX';//查询订单接口
+    public $account = 'XXXXXXX'; //第三方下放账号
+    public $privateKey = 'XXXXXXXX';	//第三方下放密钥
+
+    public function orderQuery($lowOrderId){
+        $data = array(
+            'account' => $this->account,
+            'lowOrderId' => $lowOrderId // 下游订单号
+        );
+
+        $data['sign'] = $this->getSign($data);
+        $result = $this->postByCurl($this->url, json_encode($data));
+
+        str_replace('\"', '"', $result);
+        return $result;
+    }
+
+    /**
+     * 接口请求
+     * @param $reqUrl
+     * @param $json
+     * @return mixed
+     */
+    function postByCurl($reqUrl, $json){
+        $SSL = substr($reqUrl, 0, 8) == "https://"?true:false;
+        $ch = curl_init(); // 初始化,创建一个新cURL资源
+
+        if ($SSL) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 信任任何证书
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // 检查证书中是否设置域名
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json;charset=utf-8')
+        );
+        curl_setopt($ch, CURLOPT_URL, $reqUrl); // 要访问的地址
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // 执行结果是否被返回，0是返回，1是不返回
+        $data = curl_exec($ch); // 执行并获取数据(抓取URL并把它传递给浏览器)初始化一个curl并且全部的选项都设置之后再调用。
+//        $info = curl_getinfo($ch);
+        curl_close($ch);  // 关闭cURL资源，并且释放系统资源
+        return $data;
+    }
+
+    /**
+     * 获取签名
+     */
+    public function getSign($condition)
+    {
+        $res = $this->ASCII($condition);
+        $res = $res.'&key='.$this->privateKey;
+        $res = strtoupper(md5($res));
+        return  $res;
+    }
+
+    /**
+     * ASCII排序
+     */
+    function ASCII($params = array()){
+        if(!empty($params)){
+            $p =  ksort($params);
+            if($p){
+                $str = '';
+                foreach ($params as $k=>$val){
+                    if($val != ''){
+                        $str .= $k .'=' . $val . '&';
+                    }
+                }
+                $strs = rtrim($str, '&');
+                return $strs;
+            }
+        }
+        return false;
+    }
+}
+```
+
+微信小程序 pay/confiem.js
+
+```javascript
+checkSubmit: function(e) { //支付按钮
+        var that = this;
+        wx.request({
+            url: app.globalData.url + "WxSign/tgPay", //后端支付接口
+            data:{	//数据根据第三方支付接口需求进行发送
+                lowOrderId:that.options.orderid,  //后台雪花算法生成的订单号
+                payMoney:0.01, //支付金额
+                body:that.data.title,   //商品描述
+                //notifyUrl:app.globalData.url + "WxSign/AccepttgPay",  //回调地址
+                isMinipg:1, //是否是小程序
+                openId:that.data.userinfo.openid,   //openId
+            },
+            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+            // header: {}, // 设置请求的 header
+            success: function(res) {
+                var pay_res = JSON.parse(res.data.pay_info); //由于第三方接口返回原生json字符串，需解码后才能进行使用
+                wx.requestPayment({   //唤起微信支付
+                    timeStamp: pay_res.timeStamp.toString(),
+                    nonceStr: pay_res.nonceStr,
+                    package: pay_res.package,
+                    signType: pay_res.signType,
+                    paySign: pay_res.paySign,
+                    success(res) {
+                        wx.request({
+                            url: app.globalData.url + "WxSign/orderFind",	//进行校验
+                            data:{
+                                lowOrderId:that.options.orderid,  //后台雪花算法生成的订单号
+                                status:"SUCCESS",	//前端发送SUCCESS标志
+                            },
+                            method:'GET',
+                            success:function(res){
+                                console.log(res);
+                                wx.showToast({
+                                    title: '购买成功',
+                                    icon: 'success'
+                                })
+                            }                        
+                        })
+                    },
+                    fail(res) {
+                        console.log(res);
+                        wx.showToast({
+                            title: '购买失败',
+                            icon: 'none'
+                        })
+                    }
+                  })
+                  
+                }
+            })
+        }
+    },
+
+    // 获取设备信息
+    getSysInfo: function(e) {
+        wx.getSystemInfo({
+            success: (result) => {
+                this.setData({
+                    screenHeight: (result.screenHeight - result.statusBarHeight)
+                })
+            },
+        })
+    },
+```
+
+### 需求十八： 导师学生定位功能
+
+功能：
+
+导师可请求获得学生的位置（学生上次上次的位置），学生端每隔30秒检查一次，导师是否请求位置，若有请求则更新位置
+
+微信app.js
+
+```javascript
+//app.js
+import config from 'config.js';
+App({
+    onLaunch: function() {
+        var that = this;
+        // Do something initial when launch.
+        //调用登录接口
+        "pages/index/index", {
+            "pagePath": "pages/register_stu/register_stu",
+            "text": "注册",
+            "iconPath": "img/shop.png",
+            "selectedIconPath": "img/shop2.png"
+        }
+        // return;
+
+        let menuButtonObject = wx.getMenuButtonBoundingClientRect();
+        //this.getSystemInfo();
+        //  return ;
+        wx.getSystemInfo({
+                success: (result) => {
+                    this.globalData.statusHeight = result.statusBarHeight;
+                    this.globalData.height = result.screenHeight;
+                    this.globalData.canHeight = result.windowHeight;
+                    this.globalData.width = result.screenWidth;
+                },
+            })
+    },
+
+    //获取用户信息
+    getUserInfo: function() {
+        var that = this;
+        var user_info = wx.getStorageSync('user_info');
+        if (!user_info) {
+            that.show_page('/pages/login/login');
+        } else
+            that.globalData.userInfo = user_info;
+        //  return user_info;
+    },
+    //获取设备信息
+    getSystemInfo: function() {
+        let menuButtonObject = wx.getMenuButtonBoundingClientRect();
+        if (this.globalData.systemInfo) {
+            return this.globalData.systemInfo;
+        } else {
+            wx.getSystemInfo({
+                success: (res) => {
+
+                    this.globalData.systemInfo = res;
+                    let statusBarHeight = res.statusBarHeight,
+                        navTop = menuButtonObject.top, //胶囊按钮与顶部的距离
+                        navHeight = statusBarHeight + menuButtonObject.height + (menuButtonObject.top - statusBarHeight) * 2; //导航高度
+                    this.globalData.navHeight = navHeight;
+                    this.globalData.navTop = navTop;
+                    this.globalData.windowHeight = res.windowHeight;
+                    return this.globalData.systemInfo;
+                    // typeof cb == "function" && cb(_this.globalData.systemInfo);
+                }
+            })
+        }
+    },
+
+
+    set_address: function(paddress) {
+        this.globalData.indexProvince = paddress.indexProvince;
+        this.globalData.indexCity = paddress.indexCity;
+        this.globalData.indexDistrict = paddress.indexDistrict;
+        this.globalData.province = paddress.province;
+        this.globalData.dity = paddress.dity;
+        this.globalData.district = paddress.district;
+        this.globalData.detailedInfo = paddress.detailedInfo;
+    },
+
+    globalData: {
+        userInfo: null,
+        indexProvince: 0,
+        indexCity: 0,
+        indexDistrict: 0,
+        province: '',
+        dity: '',
+        district: '',
+        detailedInfo: '',
+        userOpenId: 'undefined',
+        addressList: [],
+        userId: 0,
+        showp: 0,
+        login: 141, //登录的用户的id
+        loginr1: 0,
+        loginr2: 0,
+        viewMore: '',
+        otherAddressInfo: null,
+        isCompleteInfo: 0, //是否完成报名a
+        isTimeEnd: "0", //计时结束
+        url: config.url, //控制器路径
+        openid: "",
+        // 状态栏高度
+        statusHeight: "",
+        // 设备高度
+        height: "",
+        // 可使用高度
+        canHeight: "",
+        // 设备宽度
+        width: "",
+        //记录账号是学生还是教师还是家长，默认是学生
+        flag_identity: [1, 0, 0],
+        navigate_name: "",
+        //经纬度
+        latitude: "",
+        longtitude: "",
+        realTime: null, //实时数据对象(用于关闭实时刷新方法)
+        // imgUrl: 'https://shenhailao.com/hsreport/uploads/temp/WxImg/',
+        imgUrl: 'https://sanli-tracks.com/sanli/uploads/temp/WxImg/',
+        // imgUrl: 'http://localhost/gitSanli/sanli/uploads/temp/WxImg/',
+        // okayapiHost: "http://test_phalapi.com", // TODO: 配置成你所在的接口域名
+        okayApiAppKey: "appkey", // TODO：改为你的APP_KEY 在http://open.yesapi.cn/?r=App/Mine寻找
+        okayApiAppSecrect: "appsecret" // TODO：改为你的APP_SECRECT
+    },
+
+    show_msg: function(msg) {
+        wx.showToast({ title: msg, duration: 2000, });
+    },
+    show_error: function() {
+        $this.show_msg('网络异常！');
+    },
+
+    show_page: function(myurl) {
+        wx.navigateTo({
+            url: myurl,
+            success: function(res) {},
+            fail: function(res) {
+                if (res.errMsg && (res.errMsg == 'navigateTo:fail can not navigateTo a tabbar page' || res.errMsg == 'navigateTo:fail can not navigate to a tabbar page')) {
+
+                    wx.switchTab({ url: myurl, })
+                }
+            },
+            complete: function(res) {
+                // console.log('res', res)
+            },
+        })
+    },
+
+    checkUserInfo: function() {
+        var that = this;
+        var s1 = "";
+        s1 = s1 + '&nickName=' + this.globalData.userInfo.nickName;
+        s1 = s1 + '&avatarUrl=' + this.globalData.userInfo.avatarUrl;
+        wx.request({
+            url: this.globalData.url + 'CheckUser' + s1,
+            method: 'POST',
+            data: { formData: 0 }, //,formId:formId,openId:app.globalData.openId
+            header: {
+                'Content-Type': 'application/json'
+            },
+            success: function(res) {
+                var responseData = res.data.code;
+                s1 = '/pages/ulogin/login';
+                if (responseData) { //意见备案，
+                    that.globalData.userId = res.data.userId;
+                    s1 = '/pages/index/index';
+                }
+                that.show_page(s1);
+            },
+            fail: function(res) {
+                that.show_page('/pages/ulogin/login');
+            },
+        });
+    },
+    //导师获取正在活动的数据
+    //获取学生信息
+    TeaNowCourse: function() {
+        var that = this
+        let user = wx.getStorageSync('user');
+
+        var id = "";
+        wx.request({
+            url: that.globalData.url + 'WxSign/TeaNowCourse&id=' + user.id,//取导师正在进行的活动
+            data: {},
+            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+            // header: {}, // 设置请求的 header
+            success: function(res) {
+                // success
+                console.log("导师获取正在活动数据")
+                console.log(res)
+                console.log(res.data.data[0])
+                if (res.data.data[0] != "无正在进行的课程") {
+                    id = res.data.data[0].courseid;
+                    that.GetLocation(id); //获取老师的位置
+                } 
+
+            },
+            fail: function() {
+                // fail
+            },
+            complete: function() {
+                // complete
+            }
+        })
+    },
+    //学生获取正在活动的数据
+    ActiveStuDetail: function() {
+        let user = wx.getStorageSync('user')
+        var that = this
+        var id = "",
+            courseid = 1;
+        wx.request({
+            url: that.globalData.url + 'WxSign/ActiveStuDetail',
+            data: {
+                id: user.id,
+            },
+            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+            // header: {}, // 设置请求的 header
+            success: function(res) {
+                // success
+                console.log("学生获取正在活动数据");
+                console.log(res)
+                console.log(res.data.data[0])
+                if (res.data.data[0] == "无正在进行的课程") {
+
+                } else {
+                    //setTimeout是一个定时器，定时到期后执行回调函数
+                    that.globalData.realTime = setTimeout(function() {
+                        courseid = res.data.data[0].courseid;
+                        wx.request({
+                            url: that.globalData.url + 'WxOther/GpsAccept',//学生接收导师获取GPS请求
+                            data: {
+                                courseid: res.data.data[0].courseid,
+                                teacherid: res.data.data[0].teacherid,
+                            },
+                            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+                            // header: {}, // 设置请求的 header
+                            success: function(res) {
+                                // success
+                                console.log("学生接收的请求是")
+                                console.log(res)
+                                if (res.data.data.code == 1) {
+                                    that.GetLocation(courseid); //获取学生的位置
+                                }
+                            },
+                            fail: function() {
+                                // fail
+                            },
+                            complete: function() {
+                                // complete
+                            }
+                        })
+                    }, 30000) //每隔30秒查看一次导师是否发送请求获取学生的GPS
+                }
+            },
+            fail: function() {
+                // fail
+            },
+            complete: function() {
+                // complete
+            }
+        })
+    },
+    onShow: function() {
+        let id_flag = wx.getStorageSync("id_flag");
+        let user = wx.getStorageSync('user')
+        console.log(id_flag)
+        console.log(user);
+        var that = this;
+        if (user != null && user != '') {
+            // that.globalData.realTime = setInterval(function() {
+            // 请求服务器数据
+
+            if (id_flag == "teacher") {
+                that.TeaNowCourse()
+
+            }
+            if (id_flag == 'student') {
+                that.ActiveStuDetail();
+            }
+
+            // }, 30000) //间隔时间
+
+            // 更新数据
+            that.globalData.realTime = that.globalData.realTime; //实时数据对象(用于关闭实时刷新方法)
+
+        }
+    },
+    //上传学生定位
+    UpStuLocation: function(courseid, latitude, longitude) {
+        let user = wx.getStorageSync('user');
+        let that = this;
+        wx.request({
+            url: that.globalData.url + 'WxOther/UpGps',
+            data: {
+                userid: user.id,
+                courseid: courseid,
+                longitude: longitude,
+                latitude: latitude,
+            },
+            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+            // header: {}, // 设置请求的 header
+            success: function(res) {
+                // success
+                console.log("成功上传学生位置");
+                console.log(res)
+            },
+            fail: function() {
+                // fail
+            },
+            complete: function() {
+                // complete
+            }
+        })
+    },
+    //上传导师定位
+    UpTeaLocation: function(id, latitude, longitude) {
+        let id_flag = wx.getStorageSync("id_flag");
+        let user = wx.getStorageSync('user')
+        wx.request({
+            url: this.globalData.url + 'WxOther/TeaUpGps',
+            data: {
+                userid: user.id,
+                courseid: id,
+                longitude: longitude,
+                latitude: latitude,
+            },
+            method: 'GET', // OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT
+            // header: {}, // 设置请求的 header
+            success: function(res) {
+                // success
+                console.log("成功上传位置信息")
+                console.log(res)
+            },
+            fail: function() {
+                // fail
+            },
+            complete: function() {
+                // complete
+            }
+        })
+    },
+    // 获取定位(老师或学生)
+    GetLocation: function(id) {
+
+        let id_flag = wx.getStorageSync("id_flag");//取出缓存数据判断当前用户是老师还是学生
+        let user = wx.getStorageSync('user')
+        wx.getLocation({
+            type: "gcj02",
+            altitude: 'true',
+            isHighAccuracy: 'true',
+            highAccuracyExpireTime: '3500',
+            success: (res) => {
+                this.globalData.latitude = res.latitude;
+                this.globalData.longtitude = res.longitude;
+                console.log("导师或学生上传位置")
+                console.log(res.latitude);
+                console.log(res.longitude)
+                if (id_flag == 'teacher') { this.UpTeaLocation(id, this.globalData.latitude, this.globalData.longtitude) }
+                if (id_flag == 'student') { this.UpStuLocation(id, this.globalData.latitude, this.globalData.longtitude) }
+
+            },
+            fail: (res) => {
+                wx.showToast({
+                    title: '获取失败',
+                    icon: 'error',
+                    duration: 800
+                })
+                console.log(res);
+            }
+        })
+    },
+
+    /**
+     * 生命周期函数--监听页面隐藏
+     */
+    onHide: function() {
+        /**
+         * 当页面隐藏时关闭定时器(关闭实时刷新)
+         * 切换到其他页面了
+         */
+        clearInterval(this.globalData.realTime)
+    },
+})
+
+```
+
+models
+
+Gps.php
+
+```php
+<?php
+
+class Gps extends BaseModel {
+
+
+    public $location ='';
+    public function tableName() {
+        return '{{gps_request}}';
+    }
+
+    /**
+     * 模型验证规则
+     */
+    public function rules() {
+        return array(
+            array($this->safeField(),'safe'),
+        );
+    }
+    /**
+     * 模型关联规则
+     */
+    public function relations() {
+        return array(
+
+        );
+    }
+
+    /**
+     * 属性标签
+     */
+    public function attributeLabels() {
+        return array(
+            'id'=>'ID',
+            'time'=>'时间戳',
+            'courseid'=>'课程id',
+            'course'=>'课程名字',
+            'teacherid'=>'老师id',
+            'teacher'=>'老师名字',
+
+        );
+    }
+
+    /**
+     * Returns the static model of the specified AR class.
+     */
+    public static function model($className = __CLASS__) {
+        return parent::model($className);
+    }
+
+    protected function beforeSave() {
+        parent::beforeSave();
+        return true;
+    }
+
+    protected function afterFind()
+    {
+        return parent::afterFind();
+    }
+}
+
+```
+
+后端controller
+
+```php
+    //获取导师正在进行的活动
+    //传入参数：教师id
+    //获取参数：学生报名和分组信息，导师信息
+    //http://localhost/sanli/index.php?r=WxSign/TeaNowCourse
+    public function actionTeaNowCourse($id)
+    {
+        $s1 = 'userid,username,photo,sex,groupnum,room,car,hotel,coursename,longitude,latitude,GPS_updatetime,courseid';
+        $criteria=new CDbCriteria();
+        $time=date("Y-m-d H:i:s");
+        $criteria ->condition=get_where('1=1',$id,'teacherid',$id,'"');
+        $criteria ->condition=get_where($criteria ->condition,3,'status',3,'');
+        $criteria ->condition=get_where($criteria ->condition,$time,'starttime<=',$time,'"');
+        $criteria ->condition=get_where($criteria ->condition,$time,'endtime>=',$time,'"');
+        $da1 =SignList::model()->recToArray($criteria,$s1);
+        if(empty($da1)){
+            $this->JsonFail(array('无正在进行的课程'));
+        }
+        else{
+            $rs=array('data'=>$da1);
+            Basefun::model()->echoEncode($rs);
+        }
+    }
+
+
+    //获取正在的活动列表接口(家长、学生)
+    //传入参数：学生id
+    //获取参数：学生报名和分组信息，导师信息
+    //http://localhost/sanli/index.php?r=WxSign/ActiveStuDetail
+    public function actionActiveStuDetail($id)
+    {
+        $s1 = 'userid,username,sex,grade,class,courseid,coursename,teacherid,photo,';
+        $s1.= 'room,car,groupnum,hotel,t_phone,starttime,endtime';
+        $criteria=new CDbCriteria();
+        $time=date("Y-m-d H:i:s");
+        $criteria ->condition=get_where('1=1',$id,'userid',$id,'"');
+        $criteria ->condition=get_where($criteria ->condition,3,'status',3,'"');
+        $criteria ->condition=get_where($criteria ->condition,$time,'starttime<=',$time,'"');
+        $criteria ->condition=get_where($criteria ->condition,$time,'endtime>=',$time,'"');
+        $da1 =SignList::model()->recToArray($criteria,$s1);
+        if(empty($da1)){
+            $this->JsonFail(array('无正在进行的课程'));
+        }
+        else{
+            $teacherid = $da1[0]['teacherid'];
+            $s2 = 'name,header,sex,phone';
+            $da2 =Teacher::model()->recToArray("id=".$teacherid,$s2);
+            $rs=array('data'=>$da1,'teacher'=>$da2);
+            Basefun::model()->echoEncode($rs);
+        }
+    }
+
+
+    //学生接收导师获取GPS请求
+    //http://localhost/sanli/index.php?r=WxOther/GpsAccept
+    //传参：courseid teacherid
+    //获得参数：是否上传GPS：1/0
+    public function actionGpsAccept($courseid,$teacherid){
+        $criteria=new CDbCriteria();
+        $criteria ->condition=get_where("1=1",$courseid,'courseid',$courseid,'"');
+        $criteria ->condition=get_where($criteria ->condition,$teacherid,'teacherid',$teacherid,'"');
+        $da1 =Gps::model()->find($criteria);
+        if(empty($da1)) {
+            $this->JsonSuccess(array('code'=>0,'msg'=>'无获取请求'));
+        }
+        else if(strtotime('now')-$da1->time<=35 || strtotime('now')-$da1->time>10*60){
+            $this->JsonSuccess(array('code'=>1,'msg'=>'导师正在获取GPS'));
+        }//strtotime将文本日期时间转换为Unix时间戳
+        else{
+            $this->JsonSuccess(array('code'=>0,'msg'=>'无获取请求'));
+        }
+    }
+
+
+    //学生上传GPS信息
+    //http://localhost/sanli/index.php?r=WxOther/UpGps
+    //传参：userid courseid latitude longitude
+    //获得参数：是否成功上传
+    public function actionUpGps($userid,$courseid,$longitude,$latitude){
+        $criteria=new CDbCriteria();
+        $criteria ->condition=get_where("1=1",$courseid,'courseid',$courseid,'"');
+        $criteria ->condition=get_where($criteria ->condition,$userid,'userid',$userid,'"');
+        $da1 =SignList::model()->find($criteria);
+        if(empty($da1)) {
+            $this->JsonFail(array('msg'=>'请求错误'));
+        }
+        else{
+            $da1->longitude = $longitude;
+            $da1->latitude = $latitude;
+            $da1->GPS_updatetime = date("Y-m-d H:i:s");
+            $flag = $da1->save();
+        }
+        $flag?$this->JsonSuccess(array('msg'=>'上传位置成功')):$this->JsonSuccess(array('msg'=>'上传位置失败'));
+    }
+
+    //导师上传GPS信息
+    //http://localhost/sanli/index.php?r=WxOther/TeaUpGps
+    //传参：userid courseid latitude longitude
+    //获得参数：是否成功上传
+    public function actionTeaUpGps($userid,$courseid,$longitude,$latitude){
+        $criteria=new CDbCriteria();
+        $criteria ->condition=get_where("1=1",$courseid,'courseid',$courseid,'"');
+        $criteria ->condition=get_where($criteria ->condition,$userid,'userid',$userid,'"');
+        $da1 =teaSignList::model()->find($criteria);
+        //put_msg($longitude);
+        $flag=false;
+        if(empty($da1)) {
+            //put_msg("获取失败");
+            $this->JsonFail(array('msg'=>'请求错误'));
+        }
+        else{
+            $da1->longitude = $longitude;
+            $da1->latitude = $latitude;
+            $da1->GPS_updatetime = date("Y-m-d H:i:s");
+            /*put_msg("经纬度");
+            put_msg($latitude);
+            put_msg($longitude);*/
+            $flag = $da1->save();
+        }
+        $flag?$this->JsonSuccess(array('msg'=>'上传位置成功')):$this->JsonSuccess(array('msg'=>'上传位置失败'));
+    }
+```
+
+### 需求十九：学生上传信息实现自动分班统计
+
+需求：学生每上传一次信息，自动更新班级信息，并统计班级数据
+
+表：班级表  class   学生信息表:userinfo
+
+models/Userinfo.php
+
+从班级表里面查找，查不到就new一个新班级
+
+```php
+   protected function beforeSave() {
+        parent::beforeSave();
+        if($this->isNewRecord)
+        {
+            if(isset($_SESSION['adminid'])){    //自动保存上传人身份
+                $this->update_userid=$_SESSION['adminid'];
+                $this->update_username=$_SESSION['name'];
+                $this->update_unitid=$_SESSION['TUNIT_id'];
+                $this->update_unitname=$_SESSION['TUNIT'];
+            }
+            $time=date("Y-m-d");
+            $this->registerdate=$time;
+        }
+        $school=$this->schoolname;
+        $class=$this->class;
+        $grade=$this->grade;
+        $criteria = new CDbCriteria;
+        $criteria->condition=get_where('1=1',$school,'school',$school,'"');
+        $criteria->condition=get_where($criteria->condition,$class,'class',$class,'"');
+        $criteria->condition=get_where($criteria->condition,$grade,'grade',$grade,'"');
+        $tmp=BaseClass::model()->find($criteria);
+        if(empty($tmp))
+        {
+            $tmp = new BaseClass();
+            $tmp->school = $school;
+            $tmp->grade = $grade;
+            $tmp->class = $class;
+            $tmp->province=$this->province;
+            $tmp->city=$this->city;
+            $tmp->district=$this->district;
+            $tmp->save();
+        }
+        return true;
+    }
+
+```
+
+在学生报名分班查看页面查看每个班报名和未完成报名情况
+
+
+
+![](https://s1.ax1x.com/2022/03/15/bvR0bV.jpg)
+
+ClassDisplay/index
+
+```php
+<div class="box">
+    <?php echo show_title($this);?>
+    <div class="box-content">
+        <div class="box-header">
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+            <a style="display:none;" id="j-delete" class="btn" href="javascript:;" onclick="we.dele(we.checkval('.check-item input:checked'), deleteUrl);"><i class="fa fa-trash-o"></i>刪除</a>
+        </div><!--box-header end-->
+        <div class="box-search">
+            <form action="<?php echo Yii::app()->request->url;?>" method="get">
+                <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+                <input type="hidden" name="list_type" value="<?php echo Yii::app()->request->getParam('list_type');?>">
+                <label style="margin-right:10px;">
+                    <span>关键字：</span>
+                    <input style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+                </label>
+
+                <button class="btn btn-blue" type="submit">查询</button>
+            </form>
+        </div><!--box-search end-->
+        </form>
+    </div><!--box-search end-->
+
+    <div class="box-table">
+        <table class="list">
+            <thead>
+            <tr>
+                <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                <th style='text-align: center;'>编号</th>
+                <th style='text-align: center;'>学校</th>
+                <th style='text-align: center;'>年级</th>
+                <th style='text-align: center;'>班级</th>
+                <th style='text-align: center;'>活动名称</th>
+                <th style='text-align: center;'>报名中/报名完成人数</th>
+                <th colspan="2" style='text-align: center;'>学生查看</th>
+                <th style='text-align: center;'>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <?php
+            $index = 1;
+            foreach($arclist as $v){
+                ?>
+                <tr>
+                    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                    <td style='text-align: center;'><?php echo $v->school; ?></td>
+                    <td style='text-align: center;'><?php echo $v->grade; ?></td>
+                    <td style='text-align: center;'><?php echo $v->class; ?></td>
+                    <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                    <td style='text-align: center;'><?php echo $v->res_num; ?></td>
+                    <td style='text-align: center;'>
+                        <a class="btn btn-blue" href="<?php echo $this->createUrl('ClassDisplay/success', array('school'=>$v->school,'class'=>$v->class,'grade'=>$v->grade,'courseid'=>$v->courseid));?>" title="报名完成学生"><i class="fa fa-table "> 报名完成学生</i></a>
+                    </td>
+                    <td style='text-align: center;'>
+                        <a class="btn btn-blue" href="<?php echo $this->createUrl('ClassDisplay/failed', array('school'=>$v->school,'class'=>$v->class,'grade'=>$v->grade,'courseid'=>$v->courseid));?>" title="未完成学生"><i class="fa fa-table "> 未完成学生</i></a>
+                    </td>
+                    <td><a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a></td>
+                    </td>
+                </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div><!--box-table end-->
+    <div class="box-page c"><?php $this->page($pages);?></div>
+</div><!--box-content end-->
+</div><!--box end-->
+
+
+
+```
+
+ClassDisplay/faild.php
+
+```php
+<div class="box">
+    <?php echo show_title($this,"未报名学生")?>
+    <div class="box-content">
+        <div class="box-header">
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+        </div><!--box-header end-->
+        <div>
+
+        <form action="<?php echo Yii::app()->request->url;?>" method="get">
+            <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+            <input type="hidden" name="school" value="<?php echo Yii::app()->request->getParam('school');?>">
+            <input type="hidden" name="class" value="<?php echo Yii::app()->request->getParam('class');?>">
+            <input type="hidden" name="grade" value="<?php echo Yii::app()->request->getParam('grade');?>">
+            <input type="hidden" name=courseid" value="<?php echo Yii::app()->request->getParam('courseid');?>">
+                <label style="margin-right:10px;">
+                    <span>根据姓名查询：</span>
+                    <input style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+                </label>
+                <button class="btn btn-blue" type="submit" array=>查询</button>
+        </form>
+    </div><!--box-search end-->
+
+        <div class="box-table">
+            <table class="list">
+                <thead>
+
+                <tr>
+                    <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                    <th style='text-align: center;'>编号</th>
+                    <th style='text-align: center;'>用户姓名</th>
+                    <th style='text-align: center;'>活动名称</th>
+                    <th style='text-align: center;'>状态</th>
+                    <th style='text-align: center;'>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <?php
+                $index = 1;
+                foreach($arclist as $v){
+                    ?>
+                    <tr>
+                        <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                        <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                        <td style='text-align: center;'><?php echo $v->name; ?></td>
+                        <td style='text-align: center;'><?php echo $coursename; ?></td>
+                        <td style='text-align: center;'><?php echo '<span style="color: red">'."未完成报名</span>"; ?></td>
+                        <td style='text-align: center;'>
+                            <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                        </td>
+                    </tr>
+                    <?php $index++; } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+</div><!--box end-->
+
+
+```
+
+ClassDisplay/success.php
+
+```php
+<div class="box">
+    <?php echo show_title($this,"已报名学生")?>
+    <div class="box-content">
+        <div class="box-header">
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+        </div><!--box-header end-->
+        <div>
+
+        <form action="<?php echo Yii::app()->request->url;?>" method="get">
+            <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+            <input type="hidden" name="school" value="<?php echo Yii::app()->request->getParam('school');?>">
+            <input type="hidden" name="class" value="<?php echo Yii::app()->request->getParam('class');?>">
+            <input type="hidden" name="grade" value="<?php echo Yii::app()->request->getParam('grade');?>">
+            <input type="hidden" name=courseid" value="<?php echo Yii::app()->request->getParam('courseid');?>">
+                <label style="margin-right:10px;">
+                    <span>根据姓名查询：</span>
+                    <input style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+                </label>
+                <button class="btn btn-blue" type="submit" array=>查询</button>
+        </form>
+    </div><!--box-search end-->
+
+        <div class="box-table">
+            <table class="list">
+                <thead>
+
+                <tr>
+                    <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                    <th style='text-align: center;'>编号</th>
+                    <th style='text-align: center;'>用户姓名</th>
+                    <th style='text-align: center;'>报名活动</th>
+                    <th style='text-align: center;'>报名时间</th>
+                    <th style='text-align: center;'>状态</th>
+                    <th style='text-align: center;'>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <?php
+                $index = 1;
+                foreach($arclist as $v){
+                    ?>
+                    <tr>
+                        <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                        <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                        <td style='text-align: center;'><?php echo $v->username; ?></td>
+                        <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                        <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                        <td style='text-align: center;'><?php echo $v->status==1?'<span style="color: red">'."报名不成功</span>":($v->status==2?"报名成功未付款":($v->status==3?'<span style="color: lightseagreen">'."报名成功并付款</span>":"")); ?></td>
+                        <td style='text-align: center;'>
+                            <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                        </td>
+                    </tr>
+                    <?php $index++; } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+</div><!--box end-->
+
+
+```
+
+ClassDisplayController.php
+
+```php
+    
+    public function actionIndex($keywords = '') {
+        set_cookie('_currentUrl_', Yii::app()->request->url);
+        $modelName = $this->model;
+        $model = $modelName::model();
+        $criteria = new CDbCriteria;
+        $criteria->condition='1=1';
+        $criteria->condition=get_like($criteria->condition,'school',$keywords,'');
+        if($_SESSION['F_ROLENAME']==='学校')
+            $criteria->condition=get_where($criteria->condition,$_SESSION['TUNIT'],'school',$_SESSION['TUNIT'],'"');
+        if($_SESSION['F_ROLENAME']==='省级主管部门')
+            $criteria->condition=get_where($criteria->condition,$_SESSION['F_province'],'province',$_SESSION['F_province'],'"');
+        if($_SESSION['F_ROLENAME']==='市级主管部门')
+            $criteria->condition=get_where($criteria->condition,$_SESSION['F_city'],'city',$_SESSION['F_city'],'"');
+        if($_SESSION['F_ROLENAME']==='县级主管部门')
+            $criteria->condition=get_where($criteria->condition,$_SESSION['F_district'],'district',$_SESSION['F_district'],'"');
+            $data = array();
+        parent::_list($model, $criteria, 'index', $data,20);
+    }
+
+	public function actionSuccess($school = '',$grade = '',$class = '',$courseid = '',$keywords = '') {
+        set_cookie('_currentUrl_', Yii::app()->request->url);
+        $model = SignList::model();
+        $criteria = new CDbCriteria;
+        $data = array();
+        $criteria->condition=get_where('1=1',$courseid,'courseid',$courseid,'"');
+        $criteria->condition=get_where($criteria->condition,$school,'school',$school,'"');
+        $criteria->condition=get_where($criteria->condition,$grade,'grade',$grade,'"');
+        $criteria->condition=get_where($criteria->condition,$class,'class',$class,'"');
+        $criteria->condition=get_where($criteria->condition,3,'status',3,'"');
+        $criteria->condition=get_like($criteria->condition,'username',$keywords,'');
+        parent::_list($model, $criteria, 'success', $data,20);
+    }
+
+    public function actionFailed($school = '',$grade = '',$class = '',$courseid = '',$keywords = '') {
+        set_cookie('_currentUrl_', Yii::app()->request->url);
+        $model = Userinfo::model();
+        $criteria = new CDbCriteria;
+        $data = array();
+        $data['coursename']=ClubNews::model()->find("id=".$courseid)->name;
+        $criteria->condition=get_where($criteria->condition,$school,'schoolname',$school,'"');
+        $criteria->condition=get_where($criteria->condition,$grade,'grade',$grade,'"');
+        $criteria->condition=get_where($criteria->condition,$class,'class',$class,'"');
+        $criteria->condition=get_like($criteria->condition,'username',$keywords,'');
+        $criteria->condition.=' AND id not in (select userid from registration where status=3 and courseid='.$courseid.')'; ////查询指定班级不在报名表中的用户
+        parent::_list($model, $criteria, 'failed', $data,20);
+    }
+```
+
+注意上面最后的sql语句
+
+
+
+### 需求二十：退款功能
+
+![](https://s1.ax1x.com/2022/03/23/q3NfSJ.jpg)
+
+
+
+![](https://s1.ax1x.com/2022/03/26/qdjbCT.jpg)
+
+#### 子功能一：按订单批量退款
+
+需要实现按下后弹出蒙版
+
+如果是部分退款需要在面板选择按金额/按比例退款
+
+按下后用户确认后退款
+
+
+
+此为部分退款
+
+![](https://s1.ax1x.com/2022/03/23/q3UcnI.jpg)
+
+![](https://s1.ax1x.com/2022/03/23/q3UWAf.jpg)
+
+此为全部退款
+
+![](https://s1.ax1x.com/2022/03/23/q3UOEV.jpg)
+
+
+
+SignListController.php
+
+```php
+    public function actionRefundGroup() {
+        set_cookie('_currentUrl_', Yii::app()->request->url);
+        $model = ClubNews::model();  //属于ClubNews的model
+        $criteria = new CDbCriteria;
+        $data = array();
+        $criteria->condition=get_where('1=1',"通过",'approvalStatus',"通过",'"');
+        $criteria->order = 'id DESC';
+        if($_SESSION['F_ROLENAME']==='服务机构') $criteria->condition=get_where($criteria->condition,$_SESSION['TUNIT_id'],'serviceClub',$_SESSION['TUNIT_id'],'"');
+        parent::_list($model, $criteria, 'RefundGroup', $data,20);
+    }
+
+    public function actionRefundList($courseid) {
+        $model = SignList::model();  //属于ClubNews的model
+        $criteria = new CDbCriteria;
+        $criteria->condition=get_where('1=1',3,'status',3,'"');
+        $criteria->condition=get_where($criteria->condition,$courseid,'courseid',$courseid,'"');
+        $data=$model->findAll($criteria);
+        echo CJSON::encode($data);
+    }
+
+    public function actionRefundList2($str) {
+        $model = SignList::model();  //属于ClubNews的model
+        $criteria = new CDbCriteria;
+        $criteria->condition='1=1 AND FIND_IN_SET(id,"'.$str.'")>0';
+        $data=$model->findAll($criteria);
+        echo CJSON::encode($data);
+    }
+
+   public  function actiontgReverse($upOrderId,$lowOrderId,$refundMoney)
+    {
+        $p = new tgReverse();
+        $res = $p->reverse($upOrderId, $lowOrderId);
+        $res = json_decode($res);
+        if(!empty($res->state))
+        {
+            if($res->state==5)
+            {
+                $order = SignList::model()->find("id=".$lowOrderId);
+                $order->status=5;
+                $order->refundMoney=$refundMoney;
+                $order->refundStatus=$res->message;
+                if($order->isCoupon==1)
+                {
+                    $coupon = Coupon::model()->find("f_key='".$order->CouponKey."'");
+                    $coupon->isUsed=0;
+                    $coupon->orderid=null;
+                    $coupon->save();
+                }
+                $order->save();
+                $order->NumberDelete();
+                echo CJSON::encode($res);
+            }
+            else
+            {
+                echo CJSON::encode($res);
+            }
+        }
+        else
+        {
+            echo CJSON::encode($res);
+        }
+    }
+
+    public  function actiontgReverse1($upOrderId,$lowOrderId,$refundMoney) //部分退款
+    {
+        $p = new tgReverse1();
+        $res = $p->reverse($upOrderId,$refundMoney);
+        $res = json_decode($res);
+        if(!empty($res->state))
+        {
+            if($res->state==6)
+            {
+                $order = SignList::model()->find("id=".$lowOrderId);
+                $order->status=6;
+                $order->refundMoney=$refundMoney;
+                $order->refundStatus=$res->message;
+                if($order->isCoupon==1)
+                {
+                    $coupon = Coupon::model()->find("f_key='".$order->CouponKey."'");
+                    $coupon->isUsed=0;
+                    $coupon->orderid=null;
+                    $coupon->save();
+                }
+                $order->save();
+                $order->NumberDelete();
+                echo CJSON::encode($res);
+            }
+            else
+            {
+                echo CJSON::encode($res);
+            }
+        }
+        else
+        {
+            echo CJSON::encode($res);
+        }
+    }
+
+
+//以下为测试用的退款接口
+
+    public  function actiontgReversetest($lowOrderId='123',$upOrderId='123',$refundMoney='0')
+    {
+        put_msg($refundMoney);
+        $res['upOrderId']=$upOrderId;
+        $res['lowOrderId']=$lowOrderId;
+        $res['refundMoney'] = $refundMoney;
+        $res['message']="成功";
+        echo CJSON::encode($res);
+    }
+}
+```
+
+
+
+SignList/index (按订单批量退款 + 单个订单退款)
+
+```php+HTML
+<head>
+    <?php $cs = Yii::app()->clientScript;
+    $js_path=Yii::app()->request->baseUrl.'/static/admin';
+    $cs->registerCssFile($js_path.'/js/layui/css/layui.css');?>
+    <style>
+        #masking-bg{background-color: #fffdfd; width: 100%; height: 100%; left: 0; top: 0; z-index: 1; position: fixed; filter: alpha(opacity=80); opacity: 0.8;display: none;}
+        #masking-layer{display: none;height:500px;width:100%;position:absolute;top:0;}
+        #masking-layer div{position: relative;z-index: 1000;}
+        .close{left:80%;top:15%;z-index:1001 !important;}
+        .close img{width:30px;}
+        .masking-banner{text-align:center;width:100%;}
+        .masking-banner .img-bg{width:100%;}
+        .masking-banner .img {position:absolute;z-index:1001;left:40%;top:35%;width:25%;}
+        .masking-banner div{position:absolute;z-index:1001;left:25%;top:70%;width:50%;}
+        .skip{left:38%; top:50%; color:#fff; text-align:center;width:100%;}
+        .index-sure{background-color:#2078c7;color:#FFF;padding:10px 20px;text-align: center;border-radius:5px;display:block;width:25%;cursor: pointer;}
+    </style>
+    <style>
+        #masking-bg-Part{background-color: #fffdfd; width: 100%; height: 100%; left: 0; top: 0; z-index: 1; position: fixed; filter: alpha(opacity=80); opacity: 0.8;display: none;}
+        #masking-layer-Part{display: none;height:500px;width:100%;position:absolute;top:0;}
+        #masking-layer-Part div{position: relative;z-index: 1000;}
+        .close{left:80%;top:15%;z-index:1001 !important;}
+        .close img{width:30px;}
+        .masking-banner{text-align:center;width:100%;}
+        .masking-banner .img-bg{width:100%;}
+        .masking-banner .img {position:absolute;z-index:1001;left:40%;top:35%;width:25%;}
+        .masking-banner div{position:absolute;z-index:1001;left:25%;top:70%;width:50%;}
+        .skip{left:38%; top:50%; color:#fff; text-align:center;width:100%;}
+        .index-sure{background-color:#2078c7;color:#FFF;padding:10px 20px;text-align: center;border-radius:5px;display:block;width:25%;cursor: pointer;}
+    </style>
+    <style>
+        #masking-bg-Part-single{background-color: #fffdfd; width: 100%; height: 100%; left: 0; top: 0; z-index: 1; position: fixed; filter: alpha(opacity=80); opacity: 0.8;display: none;}
+        #masking-layer-Part-single{display: none;height:500px;width:100%;position:absolute;top:0;}
+        #masking-layer-Part-single div{position: relative;z-index: 1000;}
+        .close{left:80%;top:15%;z-index:1001 !important;}
+        .close img{width:30px;}
+        .masking-banner{text-align:center;width:100%;}
+        .masking-banner .img-bg{width:100%;}
+        .masking-banner .img {position:absolute;z-index:1001;left:40%;top:35%;width:25%;}
+        .masking-banner div{position:absolute;z-index:1001;left:25%;top:70%;width:50%;}
+        .skip{left:38%; top:50%; color:#fff; text-align:center;width:100%;}
+        .index-sure{background-color:#2078c7;color:#FFF;padding:10px 20px;text-align: center;border-radius:5px;display:block;width:25%;cursor: pointer;}
+    </style>
+</head>
+<div class="box">
+    <?php echo show_title($this)?>
+    <div class="box-content">
+        <div class="box-header">
+            <a class="btn" href="javascript:;" onclick="we.reload();"><i class="fa fa-refresh"></i>刷新</a>
+            <a style="display:none;" id="j-delete" class="btn" href="javascript:;" onclick="we.dele(we.checkval('.check-item input:checked'), deleteUrl);"><i class="fa fa-trash-o"></i>刪除</a>
+            <a style="display:none;" id="jR" class="btn" href="javascript:;" onclick="showMasking(we.checkval('.check-item input:checked'));"><i class="fa fa-reply-all"></i>批量退款</a>
+            <a style="display:none;" id="jRS" class="btn" href="javascript:;" onclick="showPartMasking(we.checkval('.check-item input:checked'));"><i class="fa fa-reply"></i>批量部分退款</a>
+        </div><!--box-header end-->
+
+
+        <div class="box-search">
+            <form action="<?php echo Yii::app()->request->url;?>" method="get">
+                <input type="hidden" name="r" value="<?php echo Yii::app()->request->getParam('r');?>">
+                <input type="hidden" name="id" id="id" value="<?php echo $_REQUEST['id'];?>">
+                <span>活动名称</span>
+                <input style="width:200px;" class="input-text" id="course_name" type="text" readonly='ture'>
+                <input type="hidden" style="width:200px;" id="course_id" class="input-text" type="text" name="courseid">
+
+                <input id="course_select_btn" class="btn" type="button" value="选择">
+                <label style="margin-right:10px;">
+                    <span>任意订单号查询：</span>
+                    <input style="width:200px;" class="input-text" type="text" name="keywords" value="<?php echo Yii::app()->request->getParam('keywords');?>">
+                </label>
+                <button class="btn btn-blue" type="submit">查询</button>
+            </form>
+
+            <!--  <td><//?php echo $form->labelEx($model, 'courseid'); ?></td>
+                 <td>
+                  <//?php echo $form->textField($model, 'courseid', array('class' => 'input-text-add','readonly'=>'ture')); ?>
+                     <input id="club_select_btn" class="btn" type="button" value="选择">
+                     <//?php echo $form->error($model, 'courseid', $htmlOptions = array()); ?>
+                 </td> -->
+        </div><!--box-search end-->
+
+        <?php if($_REQUEST['id']==1){?>
+        <div class="box-table">
+            <table class="list">
+                <thead>
+
+                <tr>
+                    <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                    <th style='text-align: center;'>编号</th>
+                    <th style='text-align: center;'>用户姓名</th>
+                    <th style='text-align: center;'>报名活动</th>
+                    <th style='text-align: center;'>报名时间</th>
+                    <th style='text-align: center;'>支付金额</th>
+                    <th style='text-align: center;'>支付截止时间</th>
+                    <th style='text-align: center;'>状态</th>
+                    <th style='text-align: center;'>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <?php
+                $index = 1;
+                foreach($arclist as $v){
+                    ?>
+                    <tr>
+                        <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                        <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                        <td style='text-align: center;'><?php echo $v->username; ?></td>
+                        <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                        <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                        <td style='text-align: center;'><?php echo $v->payMoney; ?></td>
+                        <td style='text-align: center;'><?php echo $v->payendTime; ?></td>
+                        <td style='text-align: center;'><?php echo '<span style="color: red">'."报名不成功</span>" ?></td>
+                        <td style='text-align: center;'>
+                            <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                        </td>
+                    </tr>
+                    <?php $index++; } ?>
+                </tbody>
+            </table>
+        </div><!--box-table end-->
+        <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+</div><!--box end-->
+<?php } else if ($_REQUEST['id']==2){?>
+    <div class="box-table">
+        <table class="list">
+            <thead>
+
+            <tr>
+                <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                <th style='text-align: center;'>编号</th>
+                <th style='text-align: center;'>用户姓名</th>
+                <th style='text-align: center;'>报名活动</th>
+                <th style='text-align: center;'>报名时间</th>
+                <th style='text-align: center;'>支付金额</th>
+                <th style='text-align: center;'>支付截止时间</th>
+                <th style='text-align: center;'>状态</th>
+                <th style='text-align: center;'>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <?php
+            $index = 1;
+            foreach($arclist as $v){
+                ?>
+                <tr>
+                    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                    <td style='text-align: center;'><?php echo $v->username; ?></td>
+                    <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                    <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payMoney; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payendTime; ?></td>
+                    <td style='text-align: center;'><?php echo '报名未付款' ?></td>
+                    <td style='text-align: center;'>
+                        <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                    </td>
+                </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div><!--box-table end-->
+    <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+    </div><!--box end-->
+<?php } else if ($_REQUEST['id']==3){?>
+    <div class="box-table">
+        <table class="list">
+            <thead>
+
+            <tr>
+                <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                <th style='text-align: center;'>编号</th>
+                <th style='text-align: center;'>用户姓名</th>
+                <th style='text-align: center;'>报名活动</th>
+                <th style='text-align: center;'>报名时间</th>
+                <th style='text-align: center;'>支付渠道</th>
+                <th style='text-align: center;'>平台订单号</th>
+                <th style='text-align: center;'>第三方订单号</th>
+                <th style='text-align: center;'>微信订单号</th>
+                <th style='text-align: center;'>支付金额</th>
+                <th style='text-align: center;'>支付截止时间</th>
+                <th style='text-align: center;'>状态</th>
+                <th style='text-align: center;'>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <?php
+            $index = 1;
+            foreach($arclist as $v){
+                ?>
+                <tr>
+                    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                    <td style='text-align: center;'><?php echo $v->username; ?></td>
+                    <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                    <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                    <td style='text-align: center;'><?php echo $v->paychannel; ?></td>
+                    <td style='text-align: center;'><?php echo $v->id; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->wxpayid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payMoney; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payendTime; ?></td>
+                    <td style='text-align: center;'><?php echo '<span style="color: green">'."报名成功</span>" ?></td>
+                    <td style='text-align: center;'>
+                        <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                        <button class="btn" onclick='reverse(this)' type="button" down="<?php echo $v->id; ?>" up="<?php echo $v->payid; ?>" title="退款"><i class="fa fa-undo">退款</i></button>
+                        <button class="btn" onclick='reversePart(this)' type="button" down="<?php echo $v->id; ?>" up="<?php echo $v->payid; ?>" title="退款"><i class="fa fa-undo">部分退款</i></button>
+                    </td>
+                </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div><!--box-table end-->
+    <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+    </div><!--box end-->
+<?php } else if ($_REQUEST['id']==4){?>
+    <div class="box-table">
+        <table class="list">
+            <thead>
+
+            <tr>
+                <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                <th style='text-align: center;'>编号</th>
+                <th style='text-align: center;'>用户姓名</th>
+                <th style='text-align: center;'>报名活动</th>
+                <th style='text-align: center;'>报名时间</th>
+                <th style='text-align: center;'>支付渠道</th>
+                <th style='text-align: center;'>平台订单号</th>
+                <th style='text-align: center;'>第三方订单号</th>
+                <th style='text-align: center;'>微信订单号</th>
+                <th style='text-align: center;'>支付金额</th>
+                <th style='text-align: center;'>支付截止时间</th>
+                <th style='text-align: center;'>状态</th>
+                <th style='text-align: center;'>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <?php
+            $index = 1;
+            foreach($arclist as $v){
+                ?>
+                <tr>
+                    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                    <td style='text-align: center;'><?php echo $v->username; ?></td>
+                    <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                    <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                    <td style='text-align: center;'><?php echo $v->paychannel; ?></td>
+                    <td style='text-align: center;'><?php echo $v->id; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->wxpayid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payMoney; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payendTime; ?></td>
+                    <td style='text-align: center;'><?php echo '<span style="color: orange">'."发起退款申请</span>" ?></td>
+                    <td style='text-align: center;'>
+                        <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                        <button class="btn" onclick='reverse(this)' type="button" down="<?php echo $v->id; ?>" up="<?php echo $v->payid; ?>" RMONEY="<?php echo $v->payMoney; ?>" title="同意退款"><i class="fa fa-check" style="color:green">同意</i></button>
+                        <button class="btn" onclick='reversePart(this)' type="button" down="<?php echo $v->id; ?>" up="<?php echo $v->payid; ?>" RMONEY="<?php echo $v->payMoney; ?>" title="部分退款"><i>部分退款</i></button>
+                        <button class="btn" onclick='reject(this)' type="button" down="<?php echo $v->id; ?>" up="<?php echo $v->payid; ?>" title="拒绝退款"><i class="fa fa-times" style="color:red">拒绝</i></button>
+                    </td>
+                </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div><!--box-table end-->
+    <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+    </div><!--box end-->
+<?php } else if ($_REQUEST['id']==5){?>
+    <div class="box-table">
+        <table class="list">
+            <thead>
+
+            <tr>
+                <th class="check"><input id="j-checkall" class="input-check" type="checkbox"></th>
+                <th style='text-align: center;'>编号</th>
+                <th style='text-align: center;'>用户姓名</th>
+                <th style='text-align: center;'>报名活动</th>
+                <th style='text-align: center;'>报名时间</th>
+                <th style='text-align: center;'>支付渠道</th>
+                <th style='text-align: center;'>平台订单号</th>
+                <th style='text-align: center;'>第三方订单号</th>
+                <th style='text-align: center;'>微信订单号</th>
+                <th style='text-align: center;'>支付金额</th>
+                <th style='text-align: center;'>支付截止时间</th>
+                <th style='text-align: center;'>状态</th>
+                <th style='text-align: center;'>退款金额</th>
+                <th style='text-align: center;'>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <?php
+            $index = 1;
+            foreach($arclist as $v){
+                ?>
+                <tr>
+                    <td class="check check-item"><input class="input-check" type="checkbox" value="<?php echo CHtml::encode($v->id); ?>"></td>
+                    <td style='text-align: center;'><span class="num num-1"><?php echo $index ?></span></td>
+                    <td style='text-align: center;'><?php echo $v->username; ?></td>
+                    <td style='text-align: center;'><?php echo $v->coursename; ?></td>
+                    <td style='text-align: center;'><?php echo $v->registrationtime; ?></td>
+                    <td style='text-align: center;'><?php echo $v->paychannel; ?></td>
+                    <td style='text-align: center;'><?php echo $v->id; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->wxpayid; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payMoney; ?></td>
+                    <td style='text-align: center;'><?php echo $v->payendTime; ?></td>
+                    <td style='text-align: center;'><?php echo '<span style="color: green">'.$v->refundStatus ?></td>
+                    <td style='text-align: center;'><?php echo $v->refundMoney; ?></td>
+                    <td style='text-align: center;'>
+                        <a class="btn" href="javascript:;" onclick="we.dele('<?php echo $v->id;?>', deleteUrl);" title="删除"><i class="fa fa-trash-o"></i></a>
+                    </td>
+                </tr>
+                <?php $index++; } ?>
+            </tbody>
+        </table>
+    </div><!--box-table end-->
+    <div class="box-page c"><?php $this->page($pages);?></div>
+
+    </div><!--box-content end-->
+    </div><!--box end-->
+<?php } ?>
+
+<div id="masking-bg">
+</div>
+<div id="masking-layer">
+    <div class="layui-progress layui-progress-big" lay-showPercent="yes" style="left:15%;top:30%;width:70%;" lay-filter="demo">
+        <div class="layui-progress-bar layui-bg-blue" lay-percent="0%"></div>
+        <div class="layui-card" style="margin-top:5%;width:100%;">
+            <div class="layui-card-header" style="text-align: center">批量退款申请状态明细</div>
+            <div class="layui-card-body" style="overflow-y:scroll; height:100px" id="msgbox">
+                --------开始批量申请---------<br>
+            </div>
+        </div>
+        <div class="skip" style="margin-top:5%">
+            <div class="index-sure font-13" onclick="closeMasking()">
+                完成退款
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--下面是部分退款的-->
+<div id="masking-bg-Part">
+</div>
+<div id="masking-layer-Part">
+
+    <div class="layui-card" style="left:15%;top:30%;width:70%">
+        <div class="layui-card-header" style="text-align: center">批量部分退款设置(操作不可逆)</div>
+        <div class="layui-card-body">
+                <form class="layui-form"  action="">
+                    <div style="width: 300px; display: inline-block; margin-right: 10px;">
+                        <select  xm-select="method-value-example1" id="Method">
+                            <option value="1">输入退款比例</option>
+                            <option value="2">输入退款金额</option>
+                        </select>
+                    </div>
+                </form>
+                <button class="layui-btn" style="margin-top: 5px" onclick="onMethod()" id="onMethod">确认部分退款输入方式</button>
+            <input type="number" id="inputMoney" style="margin-top: 5px" required lay-verify="required" placeholder="请输入需要部分退款的比例(0-100)" autocomplete="off" class="layui-input" value=""  >
+            <input type="number" id="inputMoney2" style="margin-top: 5px" required lay-verify="required" placeholder="请输入需要部分退款的金额/百分比" autocomplete="off" class="layui-input" value=""  >
+            <div  style="margin-top:5px;left: 40%;width: 20%"><button class="layui-btn layui-btn-fluid" id="confirm_money" onclick="submitMoney()" style="Display:none">确认退款金额/百分比</button></div>
+            <div id="input_money" class="layui-btn layui-btn-radius layui-btn-normal"  style="margin-top:5px;text-align:center;left: 20%;width: 60%;display: none"></div>
+        </div>
+
+    </div>
+    <div class="skip" style="margin-top:5%">
+        <div class="index-sure font-13" id="confirm_refund" onclick="showMasking(we.checkval('.check-item input:checked'))">
+            开始退款
+        </div>
+    </div>
+    <div class="skip" style="margin-top:5%">
+        <div class="index-sure font-13" id="confirm_refund" onclick="closeMasking()">
+            取消
+        </div>
+    </div>
+</div>
+
+
+<!--下面是单人部分退款的-->
+<div id="masking-bg-Part-single">
+</div>
+<div id="masking-layer-Part-single">
+
+    <div class="layui-card" style="left:15%;top:30%;width:70%">
+        <div class="layui-card-header" style="text-align: center">部分退款设置(操作不可逆) 请从退款金额和百分比中择一填写</div>
+        <div class="layui-card-body">
+            <text><strong>请输入部分退款百分比</strong></text>
+            <input type="number" id="inputMoneySingle" required lay-verify="required" placeholder="请输入需要部分退款的比例(0-100)" autocomplete="off" class="layui-input" onchange="input()" value=""  >
+            <text><strong>请输入部分退款金额</strong></text>
+            <input type="number" id="inputMoneySingle2" required lay-verify="required" placeholder="请输入退款的金额" autocomplete="off" class="layui-input" onchange="input2()" value=""  >
+            <div  style="margin-top:5px;left: 40%;width: 20%"><button class="layui-btn layui-btn-fluid" id="confirm_money_single" onclick="submitMoneySingle()" >确认退款</button></div>
+            <div id="input_money_single" class="layui-btn layui-btn-radius layui-btn-normal"  style="margin-top:5px;text-align:center;left: 20%;width: 60%;display: none"></div>
+        </div>
+
+    </div>
+<!--    <div class="skip" style="margin-top:5%">-->
+<!--        <div class="index-sure font-13" id="confirm_refund_single" onclick="closeMasking()">-->
+<!--            开始退款-->
+<!--        </div>-->
+</div>
+
+
+<script>
+    var reverse_money = -1; //此为部分退款金额百分比的全局变量 (0-100)
+    var Ratio = 0;
+    var Money = 0;
+
+    var MoneyInputMethod = 0; // 1 为输入退款百分比 2为输入退款金额
+
+    function onMethod() //确定退款输入方式
+    {
+        var x = document.getElementById("Method");
+        //console.log(x.value);
+        if(x.value == 1) {
+            MoneyInputMethod = 1;
+            $("#inputMoney").show();
+            $("#inputMoney2").hide(); //隐藏输入退款金额
+            $("#confirm_money").show();
+        }
+        else if (x.value == 2){
+            MoneyInputMethod = 2;
+            $("#inputMoney2").hide();
+            $("#confirm_money").hide();
+        }
+    }
+
+    function input() //监听input事件
+    {
+        var x =document.getElementById("inputMoneySingle");
+        Ratio = x.value;
+        //console.log(Ratio);
+        var money = RMONEY*Ratio*0.01;
+        money = money.toFixed(2);
+        document.getElementById('inputMoneySingle2').value=money;  //计算钱数回填到金额框中
+    }
+
+    function input2() //监听input2事件
+    {
+        var x =document.getElementById("inputMoneySingle2");
+        Money = x.value;
+        //console.log(Money);
+        var ratio = Money/RMONEY*100;
+        ratio = ratio.toFixed(2);
+        Ratio =ratio;
+        document.getElementById('inputMoneySingle').value=ratio;  //计算钱数回填到金额框中
+    }
+
+
+    $(function() {
+        //$("html").niceScroll({zindex: '1000'});
+//console.log('public row =5');
+        var $jDelete = $('#jR');
+        // console.log('public length ='+$jDelete.length);
+        if ($jDelete.length > 0) {
+            var $this, $temp1 = $('.check-item .input-check'), $temp2 = $('.box-table .list tbody tr');
+
+            $('#j-checkall').on('click', function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $temp1.each(function() {
+                        this.checked = true;
+                    });
+                    $temp2.addClass('selected');
+                } else {
+                    $temp1.each(function() {
+                        this.checked = false;
+                    });
+                    $temp2.removeClass('selected');
+                }
+                we.hasDelete('.check-item .input-check:checked', '#jR');
+            });
+
+            $temp1.each(function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $this.parent().parent().addClass('selected');
+                } else {
+                    $this.parent().parent().removeClass('selected');
+                }
+            });
+
+            $temp1.on('click', function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $this.parent().parent().addClass('selected');
+                } else {
+                    $this.parent().parent().removeClass('selected');
+                }
+                we.hasDelete('.check-item .input-check:checked', '#jR');
+            });
+        }
+    });
+
+    $(function() {
+        //$("html").niceScroll({zindex: '1000'});
+//console.log('public row =5');
+        var $jDelete = $('#jRS');
+        // console.log('public length ='+$jDelete.length);
+        if ($jDelete.length > 0) {
+            var $this, $temp1 = $('.check-item .input-check'), $temp2 = $('.box-table .list tbody tr');
+
+            $('#j-checkall').on('click', function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $temp1.each(function() {
+                        this.checked = true;
+                    });
+                    $temp2.addClass('selected');
+                } else {
+                    $temp1.each(function() {
+                        this.checked = false;
+                    });
+                    $temp2.removeClass('selected');
+                }
+                we.hasDelete('.check-item .input-check:checked', '#jRS');
+            });
+
+            $temp1.each(function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $this.parent().parent().addClass('selected');
+                } else {
+                    $this.parent().parent().removeClass('selected');
+                }
+            });
+
+            $temp1.on('click', function() {
+                $this = $(this);
+                if ($this.is(':checked')) {
+                    $this.parent().parent().addClass('selected');
+                } else {
+                    $this.parent().parent().removeClass('selected');
+                }
+                we.hasDelete('.check-item .input-check:checked', '#jRS');
+            });
+        }
+    });
+
+
+
+    $('#masking-layer').height($(window).height());
+    var deleteUrl = '<?php echo $this->createUrl('delete', array('id'=>'ID'));?>';
+    $('#course_select_btn').on('click', function(){ read_course(); });
+
+    function read_course(){
+        $.dialog.data('id', 0);
+        //console.log($.dialog.data('id'));
+        $.dialog.open('<?php echo $this->createUrl("select/course");?>',{
+            id:'course',lock:true,opacity:0.3,width:'500px',height:'60%',
+            title:'选择活动',
+            close: function () {
+                //console.log($.dialog.data('id'));
+                if($.dialog.data('id')>0){
+                    $('#course_name').val($.dialog.data('name'));
+                    $('#course_id').val($.dialog.data('id'));
+                }
+            }
+        });
+    }
+
+    function read_score(sid){
+        $.dialog.data('id', 0);
+        //console.log(sid);
+        var url = '<?php echo $this->createUrl("SignList/score", array('id'=>'ID'));?>'
+        url = url.replace(/ID/, sid); /*替换ID为选中的记录的id*/
+        $.dialog.open(url,{
+            id:'score',lock:true,opacity:0.3,width:'500px',height:'60%',
+            title:'评分明细',
+            close: function () {
+                //console.log($.dialog.data('id'));
+            }
+        });
+    }
+
+    function reverse(element){   //此为单条订单全部退款 js
+        var url = "<?php echo $this->createUrl('tgReversetest', array('upOrderId'=>'UPSID','lowOrderId'=>'LOWSID','refundMoney'=>'RMONEY'));?>";
+        var upsid= element.getAttribute("up");
+        var lowsid= element.getAttribute("down");
+        var RMONEY= element.getAttribute("rmoney");
+        //console.log(element);
+        url = url.replace(/UPSID/, upsid);
+        url = url.replace(/LOWSID/, lowsid);
+        url = url.replace(/RMONEY/, RMONEY);
+        if(confirm("确定要为此订单退款吗？")){
+            $.ajax({
+                url: url,
+                type: "get",
+                dataType : 'json',
+                success: function(res) {
+                    alert(res.message);
+                    location.reload();
+                }
+            });
+        }
+        else{
+            //alert("取消了退款");
+        }
+    }
+    var url;
+    var upsid;
+    var lowsid;
+    var RMONEY;
+    function reversePart(element)  //此为单条订单部分退款 js
+    {
+        url = "<?php echo $this->createUrl('tgReversetest', array('upOrderId'=>'UPSID','lowOrderId'=>'LOWSID','refundMoney'=>'RMONEY'));?>";
+        upsid= element.getAttribute("up");
+        lowsid= element.getAttribute("down");
+        RMONEY= element.getAttribute("rmoney");
+        //以下为填写退款比例
+        if(confirm("确定要为此订单退款吗？")){
+            $('#masking-bg-Part-single').css('display', 'block');
+            $('#masking-layer-Part-single').css('display', 'block');
+            console.log(reverse_money);
+        }
+        else{
+            //alert("取消了退款");
+        }
+    }
+
+    function reject(element){
+        var url = "<?php echo $this->createUrl('reject', array('id'=>'LOWSID'));?>";
+        var lowsid= element.getAttribute("down");
+        url = url.replace(/LOWSID/, lowsid);
+        $.ajax({
+            url: url,
+            type: "get",
+            success: function(res) {
+                location.reload();
+            }
+        });
+    }
+
+
+
+    function showMasking(str) {
+        if(confirm("确定为选择的订单退款吗？")){
+            $("#confirm_money").attr("style","display:none;");
+            // $("#Method").attr("style","display:none;");
+            // $("#onMethod").attr("style","display:none;");
+            $("#inputMoney").attr("style","display:none;");
+            $("#inputMoney2").attr("style","display:none;");
+            $("#confirm_refund").attr("style","display:none;");
+            //以上代码为确认退款后禁用修改或再次退款
+            $('#masking-bg').css('display', 'block');
+            $('#masking-layer').css('display', 'block');
+            //console.log(1000);
+            $.ajax({    //获取勾选的订单详细数据
+                url: "<?php echo $this->createUrl("SignList/RefundList2")?>",
+                data: {
+                    "str": str
+                },
+                type: "GET",
+                dataType: "json",
+                success: function (data) {  //如果成功
+                    console.log(data);
+                    var cnt=data.length;    //计算该课程人数
+                    var n=0;    //退款任务已执行人数初始化0
+                    var p;  //比例
+                    if(reverse_money === -1) {
+                        for (let i = 0; i < cnt; i++) { //对每个订单进行退款
+                            setTimeout(function () {
+                                $.ajax({
+
+                                    url: "<?php echo $this->createUrl("SignList/tgReversetest")?>", //测试端口：tgReversetest
+                                    data: {
+                                        "upOrderId": data[i].payid,
+                                        "lowOrderId": data[i].id
+                                    },
+                                    type: "GET",
+                                    dataType: "json",
+                                    success: function (res) {
+                                        n = n + 1;  //退款任务已执行人数+1
+                                        p = n / cnt * 100;    //计算比例
+                                        p = p.toFixed(2); //保留两位小数
+                                        document.getElementById("msgbox").innerHTML += res.lowOrderId + ":" + res.message + "<br>"; //写入消息框
+                                        layui.use('element', function () {
+                                            var $ = layui.jquery
+                                                , element = layui.element; //Tab的切换功能，切换事件监听等，需要依赖element模块
+                                            element.progress('demo', p + '%');  //进度条变化
+                                        });
+                                    },
+                                    error: function () {
+                                        document.getElementById("msgbox").innerHTML += "出现错误" + "<br>"; //写入消息框
+                                    }
+
+                                });
+                            }, 10 * i);   //0.01秒执行一条
+                        }
+                    }else {
+                        for (let i = 0; i < cnt; i++) { //对每个订单进行退款
+                            let tmpMoney = 0;
+                            if(MoneyInputMethod == 1) {  //输入方式为百分比
+                                tmpMoney = reverse_money; //此处必须用let 作用域为for循环内，而var作用域是整个函数快，导致无法更新
+                                tmpMoney = tmpMoney * 0.01 * data[i].payMoney; //乘以退款比例
+                            }
+                            else if (MoneyInputMethod == 2){
+                                tmpMoney = reverse_money;
+                            }
+                            console.log(tmpMoney);
+                            setTimeout(function () {
+                                $.ajax({
+
+                                    url: "<?php echo $this->createUrl("SignList/tgReversetest")?>", //测试端口：tgReversetest
+                                    data: {
+                                        "upOrderId": data[i].payid,
+                                        "lowOrderId": data[i].id,
+                                        "refundMoney":tmpMoney
+                                    },
+                                    type: "GET",
+                                    dataType: "json",
+                                    success: function (res) {
+                                        n = n + 1;  //退款任务已执行人数+1
+                                        p = n / cnt * 100;    //计算比例
+                                        p = p.toFixed(2); //保留两位小数
+                                        document.getElementById("msgbox").innerHTML += res.lowOrderId + ":" + res.message + "<br>"; //写入消息框
+                                        layui.use('element', function () {
+                                            var $ = layui.jquery
+                                                , element = layui.element; //Tab的切换功能，切换事件监听等，需要依赖element模块
+                                            element.progress('demo', p + '%');  //进度条变化
+                                        });
+                                    },
+                                    error: function () {
+                                        document.getElementById("msgbox").innerHTML += "出现错误" + "<br>"; //写入消息框
+                                    }
+
+                                });
+                            }, 10 * i);   //0.01秒执行一条
+                        }
+                    }
+                }
+            });
+
+        }
+        else{
+            //alert("取消了退款");
+        }
+    }
+
+    function submitMoney(){
+        //console.log(111);
+        if(MoneyInputMethod === 1)
+            reverse_money = $('#inputMoney').val();  //这里传入部分退款的百分比
+        else if(MoneyInputMethod === 2)
+            reverse_money = $('#inputMoney2').val();  //这里传入部分退款的金额
+        //console.log(reverse_money);
+            if ((reverse_money <= 0 || reverse_money > 100) && MoneyInputMethod === 1) //防止出现负数金额
+            {
+                alert("您输入的百分比无效");
+            }
+        else {
+            $("#confirm_refund").attr("style","display:true;");
+            if(MoneyInputMethod === 1) {
+                $("#input_money").show();
+                document.getElementById('input_money').innerHTML = "部分退款的百分比是：" + reverse_money + "%";
+            }
+            else{
+                $("#input_money").show();
+                document.getElementById('input_money').innerHTML="部分退款的金额是："+reverse_money+"元";
+            }
+            //console.log(100000);
+            //console.log(reverse_money);
+        }
+    }
+
+    function submitMoneySingle(){
+        reverse_money = $('#inputMoneySingle2').val();  //这里传入部分退款的金额
+
+        //console.log(reverse_money);
+        if(Ratio <= 0 || Ratio > 100) //防止出现负数金额
+        {
+            alert("您输入的百分比无效");
+        }
+        else {
+            $("#confirm_refund_single").attr("style","display:true;");
+            $("#input_money_single").show();
+            document.getElementById('input_money_single').innerHTML="部分退款的金额是："+reverse_money;
+            if(reverse_money != -1) {
+                //console.log(reverse_money);
+                RMONEY = reverse_money;
+               // console.log("reverse_money");
+               // console.log(reverse_money);
+                url = url.replace(/UPSID/, upsid);
+                url = url.replace(/LOWSID/, lowsid);
+                url = url.replace(/RMONEY/, RMONEY);
+                //console.log(RMONEY);
+                $.ajax({
+                    url: url,
+                    type: "get",
+                    dataType : 'json',
+                    success: function(res) {
+                        alert(res.message);
+                        location.reload();
+                    }
+                });
+            }
+            //console.log(100000);
+            //console.log(reverse_money);
+        }
+    }
+
+    function showPartMasking(str) { //部分退款的页面填写 js
+        if(confirm("请填写部分退款的百分比")){
+            $("#confirm_refund").attr("style","display:none;");
+            $("#inputMoney2").attr("style","display:none;");
+            $("#inputMoney").attr("style","display:none;");
+
+            $('#masking-bg-Part').css('display', 'block');
+            $('#masking-layer-Part').css('display', 'block');
+           // showPartMasking2(str);
+        }
+        else{
+            //alert("取消了退款");
+        }
+
+    }
+
+
+
+    function closeMasking() {
+        //console.log(reverse_money);
+        $('#masking-bg').css('display', 'none');
+        $('#masking-layer').css('display', 'none');
+        location.reload();
+    }
+
+
+</script>
+
+
+```
+
+
+
+
+
+**技术实现细节**
+
+1.隐藏或展示一个组件
+
+```html
+<input type="number" id="inputMoney" style="margin-top: 5px" required lay-verify="required" placeholder="请输入需要部分退款的比例(0-100)" autocomplete="off" class="layui-input" value=""  >
+```
+
+ 如需要隐藏或展示 inputMoney这个按钮
+
+```js
+$("#inputMoney").hide();
+$("#inputMoney").show();
+```
+
+
+
+2.js获取按钮提交的值
+
+```html
+<div  style="margin-top:5px;left: 40%;width: 20%"><button class="layui-btn layui-btn-fluid" id="confirm_money" onclick="submitMoney()" style="Display:none">确认退款金额/百分比</button></div>
+```
+
+```js
+reverse_money = $('#inputMoney').val();
+```
+
+3.在HTML的某个标签处插入显示ｊｓ的变量值
+
+```html
+<div id="input_money" class="layui-btn layui-btn-radius layui-btn-normal"  style="margin-top:5px;text-align:center;left: 20%;width: 60%;display: none"></div>
+```
+
+```js
+document.getElementById('input_money').innerHTML = "部分退款的百分比是：" + reverse_money + "%";
+```
+
+4.单个订单退款时提供两个输入框，输入百分比时自动同步计算金额，输入金额也一样
+
+```html
+            <input type="number" id="inputMoneySingle" required lay-verify="required" placeholder="请输入需要部分退款的比例(0-100)" autocomplete="off" class="layui-input" onchange="input()" value=""  >
+            <text><strong>请输入部分退款金额</strong></text>
+            <input type="number" id="inputMoneySingle2" required lay-verify="required" placeholder="请输入退款的金额" autocomplete="off" class="layui-input" onchange="input2()" value=""  >
+```
+
+```js
+    var reverse_money = -1; //此为部分退款金额百分比的全局变量 (0-100)
+    var Ratio = 0;
+    var Money = 0;
+
+function input() //监听input事件
+    {
+        var x =document.getElementById("inputMoneySingle");
+        Ratio = x.value;
+        //console.log(Ratio);
+        var money = RMONEY*Ratio*0.01;
+        money = money.toFixed(2); //保留2位小数
+        document.getElementById('inputMoneySingle2').value=money;  //计算钱数回填到金额框中
+    }
+
+    function input2() //监听input2事件
+    {
+        var x =document.getElementById("inputMoneySingle2");
+        Money = x.value;
+        //console.log(Money);
+        var ratio = Money/RMONEY*100;
+        ratio = ratio.toFixed(2);
+        Ratio =ratio;
+        document.getElementById('inputMoneySingle').value=ratio;  //计算钱数回填到金额框中
+    }
+```
+
+5.注意：js语言代码  如果只需要变量作用域在for循环里面 则 要使用  let 定义  因为var在块 {} 外也能访问
+
+```js
+                        for (let i = 0; i < cnt; i++) { //对每个订单进行退款
+                            let tmpMoney = 0;
+                            if(MoneyInputMethod == 1) {  //输入方式为百分比
+                                tmpMoney = reverse_money; //此处必须用let 作用域为for循环内，而var作用域是整个函数快，导致无法更新
+                                tmpMoney = tmpMoney * 0.01 * data[i].payMoney; //乘以退款比例
+                            }
+                            else if (MoneyInputMethod == 2){
+                                tmpMoney = reverse_money;
+                            }
+```
+
+6.xm-select 配合 layUi 的下拉选框
+
+```html
+                <form class="layui-form"  action="">
+                    <div style="width: 300px; display: inline-block; margin-right: 10px;">
+                        <select  xm-select="method-value-example1" id="Method">
+                            <option value="1">输入退款比例</option>
+                            <option value="2">输入退款金额</option>
+                        </select>
+                    </div>
+                </form>
+```
+
+
+
+#### 子功能二：单个订单退款
+
+代码在上面
+
+实现提供两个输入框，输入百分比时自动同步计算金额，输入金额也一样
+
+![](https://s1.ax1x.com/2022/03/24/qGoHqs.jpg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 需求二十一：navicat MySQL 定时任务
+
+首先检查是否开启定时事件功能  若为ON则启动   电脑关机会关闭
+
+```sql
+show variables like '%sche%';
+```
+
+若未启动则运行以下 sql 语句
+
+```sql
+set global event_scheduler =1
+```
+
+![](https://s1.ax1x.com/2022/03/25/qtSBkT.jpg)
+
+![](https://s1.ax1x.com/2022/03/25/qtSLnI.png)
+
+![](https://s1.ax1x.com/2022/03/25/qtpOxJ.png)
+
+以上sql语句功能是从从registration表里面找到和course表里面每个 id  想同的courseid的数量 并赋值给course表对应的sign_num
+
+
+
+### 需求二十二  给每个研学班级分配学校教师
+
+需求：导出分组名单时一起导出，查询每个班级已报名该课程的学校教师
+
+![](https://s1.ax1x.com/2022/03/27/qw8ANn.png)
+
+为了把时间复杂度从 n^2降低  考虑从教师报名表里面遍历把对应的教师存到班级表里面（作为哈希表）然后遍历学生报名表查找对应班级把教师字符串填入
+
+```php
+   public function actionExcel($id,$name){
+        //以下是给每个班填入学校老师
+        $class = BaseClass::model()->findAll();
+        foreach ($class as $v)
+        {
+            $schoolname = $v->school;
+            $grade = $v->grade;
+            $class = $v->class;
+            $criteriaTeacher = new CDbCriteria();
+            $criteriaTeacher->condition=get_where('1=1',$schoolname,'schoolname',$schoolname,'"');
+            $criteriaTeacher -> condition = get_where($criteriaTeacher -> condition,$grade,'grade',$grade);
+            $criteriaTeacher -> condition = get_where($criteriaTeacher -> condition,$class,'class',$class);
+            $criteriaTeacher -> condition = get_where($criteriaTeacher -> condition,$id,'courseid',$id);
+            $criteriaTeacher -> condition = get_where($criteriaTeacher -> condition,2,'type',2);
+            $teachers = teaSignList::model()->findAll($criteriaTeacher);
+            $teacherString = "";
+            foreach ($teachers as $j)
+            {
+                $teacherString.=$j->username.=",";
+            }
+            $v->teacher = $teacherString;
+            $v->save();
+        }
+
+        //给每个该课程的学生填入学校老师
+        $students = SignList::model()->findAll('courseid='.$id);
+        foreach ($students as $v)
+        {
+            $school = $v->school;
+            $grade = $v->grade;
+            $class = $v->class;
+            $criteriaClass = new CDbCriteria();
+            $criteriaClass->condition=get_where('1=1',$school,'school',$school,'"');
+            $criteriaClass -> condition = get_where($criteriaClass -> condition,$grade,'grade',$grade);
+            $criteriaClass -> condition = get_where($criteriaClass -> condition,$class,'class',$class);
+            $Class = BaseClass::model()->find($criteriaClass);
+            $v->school_teacher = $Class->teacher;
+            //put_msg($Class->teacher);
+            $v->save();
+        }
+
+        //先定义一个excel文件
+        $filename   =   date('【分组结果总表】('.date('Y-m-d H:i:s').'导出)').".xls";
+        header("Content-Type: application/vnd.ms-execl");
+        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+        header("Content-Disposition: attachment; filename=$filename");
+        header("Pragma: no-cache");
+        header("Expires: 0");
+        //条件
+        $criteria = new CDbCriteria() ;  //新建筛选
+        $criteria -> select = array('id','userid','username','sex','grade','class','status','teacher','groupnum','car_id','car','room_id','room','school_teacher');   //筛选字段
+        $criteria -> condition = ('1=1');    //筛选还没被分组的名单，即字段group=0
+        $criteria -> condition = get_where($criteria -> condition,$id,'courseid',$id);  //筛选课程（可传递参数）
+        $criteria -> condition = get_where($criteria -> condition,3,'status',3,'"');    //筛选成功报名的名单
+        $criteria -> order = 'groupnum asc,grade asc,class asc';   //指定排序
+
+        $criteria_tea = new CDbCriteria();
+
+
+
+
+        //使用html语句生成显示的格式
+        $excel_content      =   '<meta http-equiv="content-type" content="application/ms-excel; charset=utf-8"/>';
+        $excel_content     .=   '<table border="1" style="font-size:14px;">';
+        $excel_content     .=   '<h1 align="center">课程：'.$name.'</h1>';
+        $excel_content     .=   '<thead>
+                                     <tr>
+                                        <th>用户姓名</th>
+                                        <th>性别</th>
+                                        <th>年级</th>
+                                        <th>班级</th>
+                                        <th>小组号</th>
+                                        <th>导师</th>
+                                        <th>学校导师</th>
+                                        <th>房间编号</th>
+                                        <th>实际房间号</th>
+                                        <th>车编号</th>
+                                        <th>实际车牌号</th>
+                                     </tr>
+                                </thead>
+                                 ';
+        //查找最新的固化数据
+        $search = SignList::model()->findAll($criteria);
+
+        //计算每个小组的人数
+        $criteria1 = new CDbCriteria() ;  //新建筛选
+        $criteria1 -> select = array('g_id','p_num');   //筛选字段
+        $criteria -> order = 'g_id asc';
+        $criteria1 -> condition = get_where("1=1",$id,'courseid',$id);
+        $g_num = Group::model()->findALL($criteria1);
+        //html语句填充数据
+        if(empty($search)){}
+        else{
+            $i=0;
+            $j=0;
+            foreach ($search as $k) {
+                $excel_content  .= '<td>'.$k->username.'</td>';
+                $excel_content  .= '<td>'.($k->sex).'</td>';
+                $excel_content  .= '<td>'.$k->grade.'</td>';
+                $excel_content  .= '<td>'.$k->class.'</td>';
+                if($j==0)
+                {
+                    $temp=count(SignList::model()->findAll("groupnum=".$g_num[$i]->g_id." AND courseid=".$id));
+                    $excel_content  .= '<td style="text-align: center;" rowspan='.$temp.'>'.$k->groupnum.'</td>';
+                    $j++;$i++;
+                }
+                else if($j<$temp-1) $j++;
+                else $j=0;
+                $excel_content  .= '<td>'.$k->teacher.'</td>';
+                $excel_content  .= '<td>'.$k->school_teacher.'</td>';
+                $excel_content  .= '<td>'.$k->room_id.'</td>';
+                $excel_content  .= '<td>'.$k->room.'</td>';
+                $excel_content  .= '<td>'.$k->car_id.'</td>';
+                $excel_content  .= '<td>'.$k->car.'</td></tr>';
+            }
+        }
+        $excel_content  .=  '</table>';
+        echo $excel_content;
+        die;
     }
 ```
 
